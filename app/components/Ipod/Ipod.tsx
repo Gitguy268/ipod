@@ -24,6 +24,7 @@ import {
   Sticker3,
 } from "@/components/Ipod/Styled";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PopOutProvider } from "@/components/PopOut";
 import { LibraryProvider } from "@/lib/library";
 import ViewContextProvider from "@/providers/ViewContextProvider";
 import { GlobalStyles } from "@/components/Ipod/GlobalStyles";
@@ -50,7 +51,7 @@ const Ipod = () => {
             <AudioPlayerProvider>
               <SettingsContext.Consumer>
                 {([{ deviceTheme, displayMode }]) => (
-                  <>
+                  <PopOutProvider>
                     <ModeSwitcher />
                     <DropTarget />
                     {displayMode === "compact" && <MiniPlayer />}
@@ -69,7 +70,7 @@ const Ipod = () => {
                         </ClickWheelContainer>
                       </Shell>
                     </ShellContainer>
-                  </>
+                  </PopOutProvider>
                 )}
               </SettingsContext.Consumer>
             </AudioPlayerProvider>

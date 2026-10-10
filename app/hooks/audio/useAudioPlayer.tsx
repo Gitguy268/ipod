@@ -7,11 +7,19 @@ import {
   useState,
 } from "react";
 
-import { useEventListener, useHapticFeedback } from "@/hooks";
+import { useEventListener, useHapticFeedback, useInterval } from "@/hooks";
 import { queueBridge, useLibrary } from "@/lib/library";
 import * as Utils from "@/utils";
 
 import { useSettings, VOLUME_KEY, ShuffleMode, RepeatMode } from "..";
+import { AudioDecks } from "./audioDecks";
+import {
+  clearSavedPlayback,
+  loadSavedPlayback,
+  saveQueue,
+  saveTime,
+} from "./playbackStore";
+import useMediaSession from "./useMediaSession";
 import { dispatchPlaybackEndedEvent, IpodEvent } from "@/utils/events";
 
 const defaultPlaybackInfoState = {
@@ -28,6 +36,8 @@ const defaultPlaybackInfoState = {
 const RESTART_THRESHOLD_SECONDS = 3;
 /** Stop skipping ahead after this many files in a row fail to play. */
 const MAX_CONSECUTIVE_FAILURES = 3;
+/** How often the position in the current song is saved for resuming later. */
+const SAVE_TIME_INTERVAL_MS = 5000;
 
 interface AudioPlayerState {
   playbackInfo: typeof defaultPlaybackInfoState;
@@ -80,6 +90,12 @@ const getSongsFromQueueOptions = (queueOptions: MediaApi.QueueOptions) =>
   queueOptions.songs ??
   (queueOptions.song ? [queueOptions.song] : []);
 
+interface PlayAtIndexOptions {
+  autoplay?: boolean;
+  /** Seconds into the song to start from. */
+  startTime?: number;
+}
+
 interface Props {
   children: React.ReactNode;
 }
@@ -91,19 +107,22 @@ export const AudioPlayerProvider = ({ children }: Props) => {
     setShuffleMode: updateShuffleModeSetting,
     setRepeatMode: updateRepeatModeSetting,
   } = useSettings();
-  const { getFile, index } = useLibrary();
+  const { getFile, index, status } = useLibrary();
   const [volume, setVolume] = useState(0.5);
   const [nowPlayingItem, setNowPlayingItem] = useState<MediaApi.MediaItem>();
   const [playbackInfo, setPlaybackInfo] = useState(defaultPlaybackInfoState);
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const decksRef = useRef<AudioDecks | null>(null);
   /** The songs in the order they will play. */
   const queueRef = useRef<MediaApi.Song[]>([]);
   /** The same songs in the order they were queued, for turning shuffle back off. */
   const orderedQueueRef = useRef<MediaApi.Song[]>([]);
   const queueIndexRef = useRef(-1);
-  const objectUrlRef = useRef<string | undefined>(undefined);
   const loadIdRef = useRef(0);
+  const preloadIdRef = useRef(0);
+  const hasRestoredRef = useRef(false);
+  /** When the last song finished, for timing the silence before the next one. */
+  const endedAtRef = useRef<number | undefined>(undefined);
   const failureCountRef = useRef(0);
   /** Whether the current song got as far as actually playing. */
   const hasStartedRef = useRef(false);
@@ -115,10 +134,59 @@ export const AudioPlayerProvider = ({ children }: Props) => {
     repeatModeRef.current = repeatMode;
   });
 
-  const getAudio = useCallback(() => {
-    audioRef.current ??= new Audio();
-    return audioRef.current;
+  const getDecks = useCallback(() => {
+    decksRef.current ??= new AudioDecks();
+    return decksRef.current;
   }, []);
+
+  const getAudio = useCallback(() => getDecks().current, [getDecks]);
+
+  /** Where the queue goes after the current song, if anywhere. */
+  const getNextIndex = useCallback(() => {
+    const nextIndex = queueIndexRef.current + 1;
+
+    if (nextIndex < queueRef.current.length) {
+      return nextIndex;
+    }
+
+    return repeatModeRef.current === "all" && queueRef.current.length
+      ? 0
+      : undefined;
+  }, []);
+
+  /**
+   * Opens the next song ahead of time so the change-over is immediate.
+   * Call it whenever the current song or the order of the queue changes.
+   */
+  const preloadNext = useCallback(async () => {
+    const decks = getDecks();
+    const preloadId = ++preloadIdRef.current;
+    const nextIndex = getNextIndex();
+    const song =
+      nextIndex === undefined || nextIndex === queueIndexRef.current
+        ? undefined
+        : queueRef.current[nextIndex];
+
+    if (!song) {
+      decks.clearPreload();
+      return;
+    }
+
+    if (decks.hasPreloaded(song.id)) {
+      return;
+    }
+
+    try {
+      const file = await getFile(song.id);
+
+      if (preloadId === preloadIdRef.current) {
+        decks.preload(song.id, file);
+      }
+    } catch {
+      // It will be tried again, and reported, when its turn comes.
+      decks.clearPreload();
+    }
+  }, [getDecks, getFile, getNextIndex]);
 
   const updatePlaybackInfo = useCallback(async () => {
     const audio = getAudio();
@@ -140,16 +208,9 @@ export const AudioPlayerProvider = ({ children }: Props) => {
 
   const reset = useCallback(() => {
     loadIdRef.current++;
-
-    const audio = getAudio();
-    audio.pause();
-    audio.removeAttribute("src");
-    audio.load();
-
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current);
-      objectUrlRef.current = undefined;
-    }
+    preloadIdRef.current++;
+    getDecks().clear();
+    clearSavedPlayback();
 
     queueRef.current = [];
     orderedQueueRef.current = [];
@@ -159,11 +220,17 @@ export const AudioPlayerProvider = ({ children }: Props) => {
     setNowPlayingItem(undefined);
     setPlaybackInfo(defaultPlaybackInfoState);
     Utils.setDocumentSongTitle();
-  }, [getAudio]);
+  }, [getDecks]);
 
-  /** Loads the song at the given queue position from disk and starts playing it. */
+  /**
+   * Loads the song at the given queue position from disk and starts playing it.
+   * With `autoplay` off it is only loaded, paused at `startTime`.
+   */
   const playAtIndex = useCallback(
-    async (index: number) => {
+    async (
+      index: number,
+      { autoplay = true, startTime = 0 }: PlayAtIndexOptions = {}
+    ) => {
       const song = queueRef.current[index];
 
       if (!song) {
@@ -171,32 +238,46 @@ export const AudioPlayerProvider = ({ children }: Props) => {
       }
 
       const loadId = ++loadIdRef.current;
-      const audio = getAudio();
+      const decks = getDecks();
       hasStartedRef.current = false;
 
       queueIndexRef.current = index;
       setNowPlayingItem(song);
       Utils.setDocumentSongTitle(song);
-      setPlaybackInfo({ ...defaultPlaybackInfoState, isLoading: true });
+      setPlaybackInfo({
+        ...defaultPlaybackInfoState,
+        isLoading: autoplay,
+        isPaused: !autoplay,
+        currentTime: startTime,
+      });
+      saveQueue(queueRef.current, index);
+      saveTime(startTime);
 
       try {
-        const file = await getFile(song.id);
+        if (decks.hasPreloaded(song.id)) {
+          decks.swap();
+        } else {
+          const file = await getFile(song.id);
 
-        // Another song was requested while this one was being read.
-        if (loadId !== loadIdRef.current) {
-          return;
+          // Another song was requested while this one was being read.
+          if (loadId !== loadIdRef.current) {
+            return;
+          }
+
+          decks.load(file);
         }
 
-        if (objectUrlRef.current) {
-          URL.revokeObjectURL(objectUrlRef.current);
+        if (startTime) {
+          decks.current.currentTime = startTime;
         }
 
-        objectUrlRef.current = URL.createObjectURL(file);
-        audio.src = objectUrlRef.current;
+        if (autoplay) {
+          await decks.current.play();
+          hasStartedRef.current = true;
+          failureCountRef.current = 0;
+        }
 
-        await audio.play();
-        hasStartedRef.current = true;
-        failureCountRef.current = 0;
+        preloadNext();
       } catch (error) {
         if (loadId !== loadIdRef.current) {
           return;
@@ -229,7 +310,7 @@ export const AudioPlayerProvider = ({ children }: Props) => {
         }
       }
     },
-    [getAudio, getFile, reset]
+    [getDecks, getFile, preloadNext, reset]
   );
 
   const play = useCallback(
@@ -276,17 +357,15 @@ export const AudioPlayerProvider = ({ children }: Props) => {
 
   /** Moves to the next song, or finishes if the queue has run out. */
   const advance = useCallback(async () => {
-    const nextIndex = queueIndexRef.current + 1;
+    const nextIndex = getNextIndex();
 
-    if (nextIndex < queueRef.current.length) {
+    if (nextIndex !== undefined) {
       await playAtIndex(nextIndex);
-    } else if (repeatModeRef.current === "all") {
-      await playAtIndex(0);
     } else {
       reset();
       dispatchPlaybackEndedEvent();
     }
-  }, [playAtIndex, reset]);
+  }, [getNextIndex, playAtIndex, reset]);
 
   const skipNext = useCallback(async () => {
     if (!nowPlayingItem) {
@@ -323,11 +402,11 @@ export const AudioPlayerProvider = ({ children }: Props) => {
 
   const handleChangeVolume = useCallback(
     (newVolume: number) => {
-      getAudio().volume = newVolume;
+      getDecks().setVolume(newVolume);
       localStorage.setItem(VOLUME_KEY, `${newVolume}`);
       setVolume(newVolume);
     },
-    [getAudio]
+    [getDecks]
   );
 
   const handleSetShuffleMode = useCallback(
@@ -351,15 +430,21 @@ export const AudioPlayerProvider = ({ children }: Props) => {
         queueRef.current = [currentSong, ...shuffle(rest)];
         queueIndexRef.current = 0;
       }
+
+      saveQueue(queueRef.current, queueIndexRef.current);
+      preloadNext();
     },
-    [updateShuffleModeSetting]
+    [preloadNext, updateShuffleModeSetting]
   );
 
   const handleSetRepeatMode = useCallback(
     async (mode: RepeatMode) => {
       updateRepeatModeSetting(mode);
+      // Whether anything follows the last song depends on the repeat mode.
+      repeatModeRef.current = mode;
+      preloadNext();
     },
-    [updateRepeatModeSetting]
+    [preloadNext, updateRepeatModeSetting]
   );
 
   const playNext = useCallback(
@@ -376,8 +461,10 @@ export const AudioPlayerProvider = ({ children }: Props) => {
         ...queueRef.current.slice(insertAt),
       ];
       orderedQueueRef.current = [...orderedQueueRef.current, ...songs];
+      saveQueue(queueRef.current, queueIndexRef.current);
+      preloadNext();
     },
-    [play]
+    [play, preloadNext]
   );
 
   const playLater = useCallback(
@@ -389,8 +476,10 @@ export const AudioPlayerProvider = ({ children }: Props) => {
 
       queueRef.current = [...queueRef.current, ...songs];
       orderedQueueRef.current = [...orderedQueueRef.current, ...songs];
+      saveQueue(queueRef.current, queueIndexRef.current);
+      preloadNext();
     },
-    [play]
+    [play, preloadNext]
   );
 
   // The library hands out fresh song objects when it changes (for example once
@@ -414,11 +503,31 @@ export const AudioPlayerProvider = ({ children }: Props) => {
     queueBridge.playLater = playLater;
   }, [playNext, playLater]);
 
-  // Keep the playback state in step with the audio element.
+  const { syncPosition } = useMediaSession({
+    nowPlayingItem,
+    isPlaying: playbackInfo.isPlaying,
+    getAudio,
+    skipNext,
+    skipPrevious,
+    seekToTime,
+  });
+
+  // Keep the playback state in step with whichever audio element is current.
   useEffect(() => {
-    const audio = getAudio();
+    const decks = getDecks();
 
     const handlePlaying = () => {
+      hasStartedRef.current = true;
+
+      // Shows up as "player:gap" in the browser's Performance panel.
+      if (endedAtRef.current !== undefined) {
+        performance.measure("player:gap", {
+          start: endedAtRef.current,
+          end: performance.now(),
+        });
+        endedAtRef.current = undefined;
+      }
+
       setPlaybackInfo((prevState) => ({
         ...prevState,
         isPlaying: true,
@@ -426,12 +535,13 @@ export const AudioPlayerProvider = ({ children }: Props) => {
         isLoading: false,
       }));
       updatePlaybackInfo();
+      syncPosition();
     };
 
     const handlePause = () => {
       // The element also pauses when a song finishes (handled by "ended")
       // and when the queue is cleared.
-      if (audio.ended || queueIndexRef.current === -1) {
+      if (decks.current.ended || queueIndexRef.current === -1) {
         return;
       }
 
@@ -441,50 +551,94 @@ export const AudioPlayerProvider = ({ children }: Props) => {
         isPaused: true,
         isLoading: false,
       }));
+      saveTime(decks.current.currentTime);
+      syncPosition();
     };
 
     const handleWaiting = () =>
       setPlaybackInfo((prevState) => ({ ...prevState, isLoading: true }));
 
+    const handleDurationChange = () => {
+      updatePlaybackInfo();
+      syncPosition();
+    };
+
     // A file that turns out to be damaged part-way through. Files that never
     // start are dealt with where they are loaded.
     const handleError = () => {
-      if (hasStartedRef.current && audio.error) {
+      if (hasStartedRef.current && decks.current.error) {
         hasStartedRef.current = false;
         console.error(
           `Unable to keep playing: ${queueRef.current[queueIndexRef.current]?.id}`,
-          audio.error
+          decks.current.error
         );
         advance();
       }
     };
 
     const handleEnded = () => {
+      endedAtRef.current = performance.now();
+
       if (repeatModeRef.current === "one") {
-        audio.currentTime = 0;
-        audio.play();
+        decks.current.currentTime = 0;
+        decks.current.play();
         return;
       }
 
       advance();
     };
 
-    audio.addEventListener("playing", handlePlaying);
-    audio.addEventListener("pause", handlePause);
-    audio.addEventListener("waiting", handleWaiting);
-    audio.addEventListener("durationchange", updatePlaybackInfo);
-    audio.addEventListener("ended", handleEnded);
-    audio.addEventListener("error", handleError);
+    const unsubscribe = [
+      decks.on("playing", handlePlaying),
+      decks.on("pause", handlePause),
+      decks.on("waiting", handleWaiting),
+      decks.on("durationchange", handleDurationChange),
+      decks.on("seeked", syncPosition),
+      decks.on("ended", handleEnded),
+      decks.on("error", handleError),
+    ];
 
-    return () => {
-      audio.removeEventListener("playing", handlePlaying);
-      audio.removeEventListener("pause", handlePause);
-      audio.removeEventListener("waiting", handleWaiting);
-      audio.removeEventListener("durationchange", updatePlaybackInfo);
-      audio.removeEventListener("ended", handleEnded);
-      audio.removeEventListener("error", handleError);
-    };
-  }, [advance, getAudio, updatePlaybackInfo]);
+    return () => unsubscribe.forEach((stop) => stop());
+  }, [advance, getDecks, syncPosition, updatePlaybackInfo]);
+
+  // Remember the position in the song, for picking up again after a reload.
+  const saveCurrentTime = useCallback(() => {
+    if (queueIndexRef.current !== -1) {
+      saveTime(getAudio().currentTime);
+    }
+  }, [getAudio]);
+
+  useInterval(saveCurrentTime, SAVE_TIME_INTERVAL_MS, !playbackInfo.isPlaying);
+  useEventListener("pagehide", saveCurrentTime);
+
+  // Once the library is loaded, put back what was playing last time, paused.
+  // Browsers don't let a page start making sound on its own.
+  useEffect(() => {
+    if (status !== "ready" || hasRestoredRef.current) {
+      return;
+    }
+
+    hasRestoredRef.current = true;
+
+    const saved = loadSavedPlayback();
+    const current = saved && index.songsById.get(saved.songIds[saved.index]);
+
+    if (!saved || !current || queueIndexRef.current !== -1) {
+      return;
+    }
+
+    const songs = saved.songIds
+      .map((id) => index.songsById.get(id))
+      .filter((song): song is MediaApi.Song => !!song);
+
+    queueRef.current = songs;
+    orderedQueueRef.current = songs;
+
+    playAtIndex(songs.indexOf(current), {
+      autoplay: false,
+      startTime: saved.time,
+    });
+  }, [index, playAtIndex, status]);
 
   const { triggerHaptics } = useHapticFeedback();
 

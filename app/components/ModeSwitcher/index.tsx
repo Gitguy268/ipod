@@ -1,6 +1,7 @@
 import styled, { css } from "styled-components";
 
 import FolderButton from "@/components/FolderButton";
+import { usePopOut } from "@/components/PopOut";
 import { DisplayMode, useSettings } from "@/hooks";
 import { Unit } from "@/utils/constants";
 
@@ -65,6 +66,29 @@ const Segment = styled.button<{ $isActive: boolean }>`
   }
 `;
 
+const PopOutButton = styled.button`
+  padding: 3px 10px;
+  font: inherit;
+  font-size: 12px;
+  color: inherit;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  background: transparent;
+  opacity: 0.55;
+  cursor: pointer;
+  transition: opacity 0.15s;
+
+  &:hover,
+  &:focus-visible {
+    opacity: 1;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #3c94de;
+    outline-offset: 2px;
+  }
+`;
+
 const MODES: { mode: DisplayMode; label: string }[] = [
   { mode: "compact", label: "Compact" },
   { mode: "full", label: "Full" },
@@ -74,11 +98,15 @@ const MODES: { mode: DisplayMode; label: string }[] = [
 /** Switches between the mini player, the iPod, and the window-filling player. */
 const ModeSwitcher = () => {
   const { displayMode, setDisplayMode, isAuthorized } = useSettings();
+  const popOut = usePopOut();
 
   return (
     <Container $onBlack={displayMode === "massive"}>
       {/* Until a library is loaded, the other two modes show this inside their own layout. */}
       {(displayMode === "full" || isAuthorized) && <FolderButton />}
+      <PopOutButton onClick={popOut.isOpen ? popOut.close : popOut.open}>
+        {popOut.isOpen ? "Close pop-out" : "Pop out"}
+      </PopOutButton>
       <Segments role="group" aria-label="Display mode">
         {MODES.map(({ mode, label }) => (
           <Segment
