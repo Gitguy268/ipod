@@ -8,7 +8,8 @@
     "build": "next build && node scripts/strip-fixtures.mjs && serwist build",
     "bundle-report": "ANALYZE=true pnpm build",
     "lint": "eslint .",
-    "type-check": "tsc && tsc -p tsconfig.worker.json"
+    "type-check": "tsc && tsc -p tsconfig.worker.json",
+    "test": "node scripts/check-index.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.100.4",

@@ -1,6 +1,3 @@
-import palmSvg from "@public/palm.svg";
-import mneliaSignature from "@public/mnelia_signature.png";
-
 export type DeviceTheme = {
   body: {
     background: string;
@@ -77,60 +74,4 @@ const U2: DeviceTheme = {
   },
 };
 
-// This theme was created in collaboration with Parlophone Records
-// for the artist Mnelia.
-const Mnelia: DeviceTheme = {
-  body: {
-    background:
-      "linear-gradient(193.42deg, #8676d6 49.48%, rgba(238, 65, 122, 0.74) 100%);",
-    sticker1: {
-      background: `url(${palmSvg.src}) no-repeat bottom left`,
-      styles: {
-        bottom: 0,
-        left: 0,
-        height: "40%",
-        width: "50%",
-        marginLeft: "-10%",
-        marginBottom: "-10%",
-        mixBlendMode: "multiply",
-      },
-    },
-    sticker2: {
-      background: `url(${palmSvg.src}) no-repeat`,
-      styles: {
-        position: "absolute",
-        bottom: 0,
-        right: 0,
-        height: "40%",
-        width: "50%",
-        marginRight: "-10%",
-        marginBottom: "-35%",
-        mixBlendMode: "multiply",
-      },
-    },
-    sticker3: {
-      background: `url("${mneliaSignature.src}") no-repeat`,
-      styles: {
-        position: "absolute",
-        bottom: "42%",
-        width: "60px",
-        height: "40px",
-        backgroundSize: "contain",
-        right: 15,
-        opacity: "50%",
-      },
-    },
-  },
-  clickwheel: {
-    background: "#2a2a2acf",
-    outline: "#62315e",
-    button: "#ffffff",
-    centerButton: {
-      background: "#c69edb",
-      boxShadow: "rgb(142 54 101)",
-      outline: "#62315e",
-    },
-  },
-};
-
-export { Silver, Black, U2, Mnelia };
+export { Silver, Black, U2 };

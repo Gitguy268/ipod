@@ -57,7 +57,7 @@ export class Renderer {
   } | null = null;
   private recycleIcon: HTMLImageElement | null = null;
   private handCursor: HTMLImageElement | null = null;
-  private appleLogo: HTMLImageElement | null = null;
+  private cardBackMark: HTMLImageElement | null = null;
   private suitImages: Record<string, HTMLImageElement> = {};
 
   constructor(
@@ -100,8 +100,8 @@ export class Renderer {
       });
     }
 
-    this.loadColoredSvg("/ipod/apple.svg", "#FFFFFF", (img) => {
-      this.appleLogo = img;
+    this.loadColoredSvg("/ipod/card_back.svg", "#FFFFFF", (img) => {
+      this.cardBackMark = img;
     });
   }
 
@@ -676,14 +676,14 @@ export class Renderer {
     }
     ctx.restore();
 
-    // Apple logo centered (814x1000 aspect ratio)
-    if (this.appleLogo) {
+    // Music note centered (814x1000 aspect ratio)
+    if (this.cardBackMark) {
       const logoH = ih * 0.34;
       const logoW = logoH * (814 / 1000);
       const lx = x + (l.cardWidth - logoW) / 2;
       const ly = y + (l.cardHeight - logoH) / 2;
       ctx.globalAlpha = 0.3;
-      ctx.drawImage(this.appleLogo, lx, ly, logoW, logoH);
+      ctx.drawImage(this.cardBackMark, lx, ly, logoW, logoH);
       ctx.globalAlpha = 1;
     }
   }

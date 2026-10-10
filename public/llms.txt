@@ -1,0 +1,18 @@
+# iPod.js (local files)
+
+> An iPod Classic simulator for the web that plays music from a folder on the user's own computer. It runs entirely in the browser: there is no server, no account, and no music is uploaded.
+
+- Source code: https://github.com/Gitguy268/ipod
+- Based on: https://github.com/tvillarete/ipod-classic-js (MIT)
+
+## What it does
+
+- Reads a chosen folder and its subfolders for mp3, m4a, aac, flac, wav, ogg, opus and aiff files.
+- Groups songs into artists, albums, genres and playlists (.m3u) from their tags, falling back to folder names.
+- Shows album artwork embedded in the files or stored beside them.
+- Three display modes: a compact mini player, the full iPod, and a window-filling view.
+
+## Browser support
+
+- Chrome and Edge remember the chosen folder between visits.
+- Safari, Firefox and Brave need the folder chosen (or dragged in) on each visit.
