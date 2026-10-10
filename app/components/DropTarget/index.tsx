@@ -39,7 +39,7 @@ const isFileDrag = (event: DragEvent) =>
 /** Lets a music folder be dragged from the desktop onto the page. */
 const DropTarget = () => {
   const { openDropped } = useLibrary();
-  const { reset } = useAudioPlayer();
+  const { nowPlayingItem, reset } = useAudioPlayer();
   const [isDragging, setIsDragging] = useState(false);
   const [notice, setNotice] = useState<string>();
   /** Drag events fire for every element the pointer crosses, so count them in and out. */
@@ -80,13 +80,18 @@ const DropTarget = () => {
       const folder = readDrop(event.dataTransfer.items);
 
       if (folder) {
-        reset();
+        // Stop whatever is playing from the old library. With nothing playing,
+        // leave the saved position alone so it can be resumed from this folder.
+        if (nowPlayingItem) {
+          reset();
+        }
+
         openDropped(folder);
       } else {
         setNotice("Drop a folder, not individual files");
       }
     },
-    [openDropped, reset]
+    [nowPlayingItem, openDropped, reset]
   );
 
   useEventListener("dragenter", handleDragEnter);

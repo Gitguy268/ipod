@@ -34,7 +34,7 @@ Choose the folder from the iPod's menu or the button at the top of the page, or 
 | Chrome, Edge | The folder is remembered. On a later visit, one click re-allows it. |
 | Safari, Firefox, Brave | The folder has to be chosen or dragged in again on each visit. When choosing, the browser words this as an "upload", but nothing leaves the computer. |
 
-Brave switches the folder-remembering feature off by default. It can be turned on under `brave://flags` (search for "File System Access API").
+Brave ships with the folder-remembering feature switched off. Its experimental settings (`brave://flags`) may offer a "File System Access API" switch that turns it on.
 
 The page has to be served from `https://` or `localhost`. It does not work opened as a file.
 
