@@ -6,10 +6,10 @@ import {
   useState,
 } from "react";
 import { ColorScheme } from "@/utils/colorScheme";
-import { SELECTED_SERVICE_KEY } from "@/utils/service";
+import { useLibrary } from "@/lib/library";
 import { DeviceThemeName } from "@/utils/themes";
 
-type StreamingService = "apple" | "spotify";
+export type DisplayMode = "compact" | "full" | "massive";
 export type ShuffleMode = "off" | "songs" | "albums";
 export type RepeatMode = "off" | "one" | "all";
 
@@ -19,17 +19,15 @@ export const DEVICE_COLOR_KEY = "ipodSelectedDeviceTheme";
 export const SHUFFLE_MODE_KEY = "ipodShuffleMode";
 export const REPEAT_MODE_KEY = "ipodRepeatMode";
 export const HAPTICS_ENABLED_KEY = "ipodHapticsEnabled";
+export const DISPLAY_MODE_KEY = "ipodDisplayMode";
 
 export interface SettingsState {
-  service?: StreamingService;
-  isSpotifyAuthorized: boolean;
-  isAppleAuthorized: boolean;
-  isOffline: boolean;
   colorScheme: ColorScheme;
   deviceTheme: DeviceThemeName;
   shuffleMode: ShuffleMode;
   repeatMode: RepeatMode;
   hapticsEnabled: boolean;
+  displayMode: DisplayMode;
 }
 
 type SettingsContextType = [
@@ -43,57 +41,21 @@ export const SettingsContext = createContext<SettingsContextType>([
 ]);
 
 export type SettingsHook = SettingsState & {
+  /** True once a music folder has been loaded. */
   isAuthorized: boolean;
-  setIsSpotifyAuthorized: (val: boolean) => void;
-  setIsAppleAuthorized: (val: boolean) => void;
-  setService: (service?: StreamingService) => void;
+  /** Local files never need a connection. Kept so views can share one gate. */
+  isOffline: boolean;
   setColorScheme: (colorScheme?: ColorScheme) => void;
   setDeviceTheme: (deviceTheme: DeviceThemeName) => void;
   setShuffleMode: (mode: ShuffleMode) => void;
   setRepeatMode: (mode: RepeatMode) => void;
   setHapticsEnabled: (enabled: boolean) => void;
+  setDisplayMode: (mode: DisplayMode) => void;
 };
 
 export const useSettings = (): SettingsHook => {
   const [state, setState] = useContext(SettingsContext);
-
-  const setIsSpotifyAuthorized = useCallback(
-    (val: boolean) =>
-      setState((prevState) => ({
-        ...prevState,
-        isSpotifyAuthorized: val,
-      })),
-    [setState]
-  );
-
-  const setIsAppleAuthorized = useCallback(
-    (val: boolean) =>
-      setState((prevState) => ({
-        ...prevState,
-        isAppleAuthorized: val,
-      })),
-    [setState]
-  );
-
-  const setService = useCallback(
-    (service?: StreamingService) => {
-      if (typeof window === "undefined") {
-        return;
-      }
-
-      setState((prevState) => ({
-        ...prevState,
-        service,
-      }));
-
-      if (service) {
-        localStorage.setItem(SELECTED_SERVICE_KEY, service);
-      } else {
-        localStorage.removeItem(SELECTED_SERVICE_KEY);
-      }
-    },
-    [setState]
-  );
+  const { status } = useLibrary();
 
   const setDeviceTheme = useCallback(
     (deviceTheme: DeviceThemeName) => {
@@ -146,17 +108,24 @@ export const useSettings = (): SettingsHook => {
     [setState]
   );
 
+  const setDisplayMode = useCallback(
+    (displayMode: DisplayMode) => {
+      setState((prevState) => ({ ...prevState, displayMode }));
+      localStorage.setItem(DISPLAY_MODE_KEY, displayMode);
+    },
+    [setState]
+  );
+
   return {
     ...state,
-    isAuthorized: state.isAppleAuthorized || state.isSpotifyAuthorized,
-    setIsSpotifyAuthorized,
-    setIsAppleAuthorized,
-    setService,
+    isAuthorized: status === "ready",
+    isOffline: false,
     setColorScheme,
     setDeviceTheme,
     setShuffleMode,
     setRepeatMode,
     setHapticsEnabled,
+    setDisplayMode,
   };
 };
 
@@ -166,24 +135,17 @@ interface Props {
 
 export const SettingsProvider = ({ children }: Props) => {
   const [settingsState, setSettingsState] = useState<SettingsState>({
-    isAppleAuthorized: false,
-    isSpotifyAuthorized: false,
-    isOffline: false,
-    service: undefined,
     colorScheme: "default",
     deviceTheme: "silver",
     shuffleMode: "off",
     repeatMode: "off",
     hapticsEnabled: true,
+    displayMode: "full",
   });
 
   const handleMount = useCallback(() => {
     setSettingsState((prevState) => ({
       ...prevState,
-      isOffline: !navigator.onLine,
-      service:
-        (localStorage.getItem(SELECTED_SERVICE_KEY) as StreamingService) ??
-        undefined,
       colorScheme:
         (localStorage.getItem(COLOR_SCHEME_KEY) as ColorScheme) ?? "default",
       deviceTheme:
@@ -193,29 +155,14 @@ export const SettingsProvider = ({ children }: Props) => {
       repeatMode:
         (localStorage.getItem(REPEAT_MODE_KEY) as RepeatMode) ?? "off",
       hapticsEnabled: localStorage.getItem(HAPTICS_ENABLED_KEY) !== "false", // Default to true
+      displayMode:
+        (localStorage.getItem(DISPLAY_MODE_KEY) as DisplayMode) ?? "full",
     }));
   }, []);
 
   useEffect(() => {
     handleMount();
   }, [handleMount]);
-
-  useEffect(() => {
-    const syncOnlineStatus = () =>
-      setSettingsState((prev) => {
-        const offline = !navigator.onLine;
-        if (prev.isOffline === offline) return prev;
-        return { ...prev, isOffline: offline };
-      });
-
-    window.addEventListener("offline", syncOnlineStatus);
-    window.addEventListener("online", syncOnlineStatus);
-
-    return () => {
-      window.removeEventListener("offline", syncOnlineStatus);
-      window.removeEventListener("online", syncOnlineStatus);
-    };
-  }, []);
 
   return (
     <SettingsContext.Provider value={[settingsState, setSettingsState]}>

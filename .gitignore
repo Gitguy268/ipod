@@ -19,7 +19,7 @@ public/sw.js
 public/sw.js.map
 
 # TypeScript
-tsconfig.tsbuildinfo
+*.tsbuildinfo
 
 # misc
 .DS_Store
@@ -39,3 +39,9 @@ yarn-error.log*
 .open-next
 .dev.vars
 .wrangler
+
+# generated test library (scripts/make-fixtures.mjs)
+public/dev-fixtures
+
+# static export
+/out

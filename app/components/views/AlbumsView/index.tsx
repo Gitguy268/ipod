@@ -31,15 +31,17 @@ const _AlbumsView = ({ albums, inLibrary = true }: Props) => {
       albums ?? fetchedAlbums?.pages.flatMap((page) => page?.data ?? []);
 
     return (
-      data?.map((album) => ({
-        type: "view",
-        headerTitle: album.name,
-        label: album.name,
-        subLabel: album.artistName,
-        image: { url: Utils.getArtwork(300, album.artwork?.url) ?? "" },
-        viewId: "album",
-        props: { id: album.id ?? "", inLibrary },
-      })) ?? []
+      data?.map(
+        (album): SelectableListOption => ({
+          type: "view",
+          headerTitle: album.name,
+          label: album.name,
+          sublabel: album.artistName,
+          imageUrl: Utils.getArtwork(100, album.artwork?.url),
+          viewId: "album",
+          props: { id: album.id ?? "", inLibrary },
+        })
+      ) ?? []
     );
   }, [albums, fetchedAlbums, inLibrary]);
 

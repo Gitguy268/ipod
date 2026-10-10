@@ -1,56 +1,38 @@
 "use client";
-import { memo, useCallback, useState } from "react";
+import { memo, useState } from "react";
 import {
   AudioPlayerProvider,
   SettingsContext,
   SettingsProvider,
   useEffectOnce,
 } from "@/hooks";
-import { ClickWheel, ViewManager } from "@/components";
+import {
+  ClickWheel,
+  MassivePlayer,
+  MiniPlayer,
+  ModeSwitcher,
+  ViewManager,
+} from "@/components";
 import {
   ScreenContainer,
   ClickWheelContainer,
   Shell,
+  ShellContainer,
   Sticker,
   Sticker2,
   Sticker3,
 } from "@/components/Ipod/Styled";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { SpotifySDKProvider } from "@/providers/SpotifySdkProvider";
-import { MusicKitProvider } from "@/providers/MusicKitProvider";
+import { LibraryProvider } from "@/lib/library";
 import ViewContextProvider from "@/providers/ViewContextProvider";
-import { useRouter, useSearchParams } from "next/navigation";
 import { GlobalStyles } from "@/components/Ipod/GlobalStyles";
-import Script from "next/script";
-import { API_URL } from "@/utils/constants/api";
-import { SELECTED_SERVICE_KEY } from "@/utils/service";
 
-type Props = {
-  appleAccessToken: string;
-};
-
-const Ipod = ({ appleAccessToken }: Props) => {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+const Ipod = () => {
   const [queryClient] = useState(() => new QueryClient());
   const [isLoading, setIsLoading] = useState(true);
 
-  const handleSpotifyCallback = useCallback(
-    async (code: string) => {
-      await fetch(`${API_URL}/spotify/callback?code=${code}`);
-      localStorage.setItem(SELECTED_SERVICE_KEY, "spotify");
-      setIsLoading(false);
-      router.replace("/");
-    },
-    [router]
-  );
-
+  // Everything below reads from the browser, so wait until we're in one.
   useEffectOnce(() => {
-    const spotifyCallbackCode = searchParams.get("code");
-    if (spotifyCallbackCode) {
-      handleSpotifyCallback(spotifyCallbackCode);
-      return;
-    }
     setIsLoading(false);
   });
 
@@ -61,35 +43,37 @@ const Ipod = ({ appleAccessToken }: Props) => {
   return (
     <QueryClientProvider client={queryClient}>
       <GlobalStyles />
-      <SettingsProvider>
-        <ViewContextProvider>
-          <SpotifySDKProvider>
-            <MusicKitProvider token={appleAccessToken}>
-              <AudioPlayerProvider>
-                <SettingsContext.Consumer>
-                  {([{ deviceTheme }]) => (
-                    <Shell $deviceTheme={deviceTheme}>
-                      <Sticker $deviceTheme={deviceTheme} />
-                      <Sticker2 $deviceTheme={deviceTheme} />
-                      <Sticker3 $deviceTheme={deviceTheme} />
-                      <ScreenContainer>
-                        <ViewManager />
-                      </ScreenContainer>
-                      <ClickWheelContainer>
-                        <ClickWheel />
-                      </ClickWheelContainer>
-                    </Shell>
-                  )}
-                </SettingsContext.Consumer>
-              </AudioPlayerProvider>
-            </MusicKitProvider>
-          </SpotifySDKProvider>
-        </ViewContextProvider>
-      </SettingsProvider>
-      <Script
-        src="https://sdk.scdn.co/spotify-player.js"
-        strategy="lazyOnload"
-      />
+      <LibraryProvider>
+        <SettingsProvider>
+          <ViewContextProvider>
+            <AudioPlayerProvider>
+              <SettingsContext.Consumer>
+                {([{ deviceTheme, displayMode }]) => (
+                  <>
+                    <ModeSwitcher />
+                    {displayMode === "compact" && <MiniPlayer />}
+                    {displayMode === "massive" && <MassivePlayer />}
+                    {/* The iPod stays mounted in every mode so it keeps its place in the menus. */}
+                    <ShellContainer $isHidden={displayMode !== "full"}>
+                      <Shell $deviceTheme={deviceTheme}>
+                        <Sticker $deviceTheme={deviceTheme} />
+                        <Sticker2 $deviceTheme={deviceTheme} />
+                        <Sticker3 $deviceTheme={deviceTheme} />
+                        <ScreenContainer>
+                          <ViewManager />
+                        </ScreenContainer>
+                        <ClickWheelContainer>
+                          <ClickWheel />
+                        </ClickWheelContainer>
+                      </Shell>
+                    </ShellContainer>
+                  </>
+                )}
+              </SettingsContext.Consumer>
+            </AudioPlayerProvider>
+          </ViewContextProvider>
+        </SettingsProvider>
+      </LibraryProvider>
     </QueryClientProvider>
   );
 };

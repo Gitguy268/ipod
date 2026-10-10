@@ -18,7 +18,7 @@ const Container = styled(motion.div)`
 `;
 
 const MusicPreview = () => {
-  const { isSpotifyAuthorized, isAppleAuthorized } = useSettings();
+  const { isAuthorized } = useSettings();
 
   const {
     data: albums,
@@ -43,8 +43,8 @@ const MusicPreview = () => {
 
   return (
     <Container {...previewSlideRight}>
-      {!isSpotifyAuthorized && !isAppleAuthorized ? (
-        <AuthPrompt message="Sign in to view your library" />
+      {!isAuthorized ? (
+        <AuthPrompt />
       ) : isLoading && !albums ? (
         <LoadingScreen backgroundColor="linear-gradient(180deg, #B1B5C0 0%, #686E7A 100%)" />
       ) : (

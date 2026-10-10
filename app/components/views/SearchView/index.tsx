@@ -129,7 +129,7 @@ const _SearchView = () => {
       emptyMessage="No results"
       emptyContent={
         !isAuthorized
-          ? <AuthPrompt message="Sign in to search" />
+          ? <AuthPrompt />
           : undefined
       }
     />

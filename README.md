@@ -1,18 +1,16 @@
 <div align="center">
 
-# iPod.js
+# iPod.js (local files)
 
-**The iPod Classic, rebuilt for the streaming era.**
+**The iPod Classic, playing the music on your own computer.**
 
-Spotify and Apple Music in a pixel-perfect iPod Classic, complete with click wheel, games, and themes.
-
-[Try it live](https://tannerv.com/ipod)
-
-![ipod](https://user-images.githubusercontent.com/21055469/71572818-c877a780-2a95-11ea-9e4e-6b0476ff172b.gif)
+Point it at a music folder and browse it with the click wheel. Nothing is uploaded: files are read straight from disk in the browser.
 
 </div>
 
 ---
+
+A fork of [tvillarete/ipod-classic-js](https://github.com/tvillarete/ipod-classic-js) with the Apple Music and Spotify integrations replaced by a local library.
 
 ## Quick Start
 
@@ -21,55 +19,53 @@ pnpm install
 pnpm dev
 ```
 
-On first run, you'll be prompted to enter values for each secret (Spotify credentials, Apple Developer Token). These are stored in a local Cloudflare Secrets Store managed by Wrangler.
+Visit **[http://localhost:3000/ipod](http://localhost:3000/ipod)** and choose your music folder.
 
-Visit **[http://127.0.0.1:3000/ipod](http://127.0.0.1:3000/ipod)** to start.
+## Your music
 
-> Use `127.0.0.1` instead of `localhost`. Spotify's redirect URIs require it.
+- Every audio file in the chosen folder and its subfolders is added: mp3, m4a, aac, flac, wav, ogg, opus, aiff (whatever the browser can play).
+- Artist, album, track and disc numbers come from the file tags. Files without tags fall back to `Artist/Album/01 Title.mp3` folder naming.
+- Album artwork is read from the files. If a file has none, an image named `cover`, `folder`, `front` or `album` (jpg, png, webp) in the same folder is used.
+- Tags and artwork thumbnails are cached in the browser, so only new or changed files are read on later visits.
 
-## Secrets
+### Browser support
 
-This project uses [Cloudflare Secrets Store](https://developers.cloudflare.com/secrets-store/) for managing secrets in both production and local development.
-
-### First-time setup
-
-Running `pnpm dev` will automatically detect missing secrets and prompt you for values. You can also run the setup manually:
-
-```bash
-pnpm sync-dev-vars
-```
-
-You'll need the following values:
-
-| Secret | How to get it |
+| Browser | Folder access |
 |---|---|
-| `SPOTIFY_CLIENT_ID` | Create an app in the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) |
-| `SPOTIFY_CLIENT_SECRET` | Same Spotify app — copy the Client Secret |
-| `APPLE_DEVELOPER_TOKEN` | See the [Apple Music JWT Generator](https://github.com/tvillarete/apple-music-jwt-generator) |
+| Chrome, Edge | The folder is remembered. On a later visit, one click re-allows it. |
+| Safari, Firefox, Brave | The folder has to be chosen again on each visit. The browser words this as an "upload", but nothing leaves the computer. |
 
-### Spotify redirect URI
+Brave switches this browser feature off by default. It can be turned on under `brave://flags` (search for "File System Access API").
 
-Add `http://127.0.0.1:3000/ipod` as a redirect URI in your Spotify app settings. Must be `127.0.0.1`, not `localhost`.
+The page has to be served from `https://` or `localhost`. It does not work opened as a file.
 
-### Updating secrets
+## Display modes
 
-To update local secret values at any time:
+Switch with the control in the top-right corner, or under Settings.
+
+- **Compact**: a mini player with artwork, title and previous / play / next.
+- **Full**: the iPod.
+- **Massive**: fills the window with the album cover, or a wall of covers to pick from.
+
+In Compact and Massive, Space plays and pauses and the left and right arrow keys change song.
+
+## Building
 
 ```bash
-pnpm sync-dev-vars
+pnpm build
 ```
 
-## Deployment
+This writes a static site to `out/`. Host it on any static host under the `/ipod` path.
 
-Deployed on [Cloudflare Workers](https://workers.cloudflare.com/) via [OpenNext](https://opennext.js.org/cloudflare).
+## Development
 
 ```bash
-pnpm build                        # Next.js + Serwist service worker
-npx opennextjs-cloudflare build   # Bundle for Cloudflare Workers
-npx opennextjs-cloudflare deploy  # Deploy to production
+pnpm type-check
+node scripts/check-index.mjs    # how tracks are grouped into albums and artists
+node scripts/make-fixtures.mjs  # needs ffmpeg; writes a small test library to public/dev-fixtures
 ```
 
-Production secrets are managed in the [Cloudflare Secrets Store](https://developers.cloudflare.com/secrets-store/) via the dashboard or `wrangler secrets-store` CLI.
+With the test library generated, open `http://localhost:3000/ipod?fixture` to load it without the folder picker.
 
 ## Built With
 
@@ -83,7 +79,7 @@ MIT
 
 <div align="center">
 
-**[Tanner Villarete](https://tannerv.com)** · [LinkedIn](http://linkedin.com/in/tvillarete)
+Original iPod.js by **[Tanner Villarete](https://tannerv.com)**
 
 [![GitHub stars](https://img.shields.io/github/stars/tvillarete/ipod-classic-js?style=social)](https://github.com/tvillarete/ipod-classic-js/stargazers)
 

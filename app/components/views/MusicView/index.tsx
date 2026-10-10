@@ -4,13 +4,11 @@ import { defineView } from "@/components/views/defineView";
 import { SelectableListOption } from "@/components/SelectableList";
 import SelectableListView from "@/components/SelectableListView";
 import { SplitScreenPreview } from "@/components/previews";
-import {
-  useAudioPlayer,
-  useSettings,
-} from "@/hooks";
+import { useAudioPlayer } from "@/hooks";
+import { useLibrary } from "@/lib/library";
 
 const _MusicView = () => {
-  const { isAppleAuthorized } = useSettings();
+  const { index } = useLibrary();
   const { nowPlayingItem } = useAudioPlayer();
 
   const options: SelectableListOption[] = useMemo(() => {
@@ -19,12 +17,6 @@ const _MusicView = () => {
         type: "view",
         label: "Cover Flow",
         viewId: "coverFlow",
-        preview: SplitScreenPreview.Music,
-      },
-      {
-        type: "view",
-        label: "Playlists",
-        viewId: "playlists",
         preview: SplitScreenPreview.Music,
       },
       {
@@ -41,13 +33,20 @@ const _MusicView = () => {
       },
       {
         type: "view",
+        label: "Songs",
+        viewId: "songs",
+        props: { songs: index.songs },
+        preview: SplitScreenPreview.Music,
+      },
+      {
+        type: "view",
         label: "Search",
         viewId: "search",
         preview: SplitScreenPreview.Music,
       },
     ];
 
-    if (isAppleAuthorized && !!nowPlayingItem) {
+    if (nowPlayingItem) {
       arr.push({
         type: "view",
         label: "Now playing",
@@ -57,7 +56,7 @@ const _MusicView = () => {
     }
 
     return arr;
-  }, [isAppleAuthorized, nowPlayingItem]);
+  }, [index.songs, nowPlayingItem]);
 
   return <SelectableListView viewId="music" options={options} />;
 };

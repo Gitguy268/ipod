@@ -36,7 +36,7 @@ const _CoverFlowView = () => {
   return (
     <Container>
       {!isAuthorized ? (
-        <AuthPrompt message="Sign in to view Cover Flow" />
+        <AuthPrompt />
       ) : isLoading ? (
         <LoadingScreen backgroundColor="white" />
       ) : (

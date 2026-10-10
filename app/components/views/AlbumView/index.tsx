@@ -9,7 +9,7 @@ import { useFetchAlbum } from "@/hooks/utils/useDataFetcher";
 
 interface Props {
   id: string;
-  /** Get album from the user's library if true (otherwise search Apple Music). */
+  /** Unused: everything comes from the local music folder. */
   inLibrary?: boolean;
 }
 
@@ -39,7 +39,7 @@ const _AlbumView = ({ id, inLibrary = false }: Props) => {
       viewId="album"
       options={options}
       loading={isLoading}
-      emptyMessage="No saved songs"
+      emptyMessage="No songs"
     />
   );
 };

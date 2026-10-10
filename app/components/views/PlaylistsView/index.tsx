@@ -61,7 +61,7 @@ const _PlaylistsView = ({ playlists, inLibrary = true }: Props) => {
       emptyMessage="No saved playlists"
       emptyContent={
         !isAuthorized || isOffline
-          ? <AuthPrompt message="Sign in to view your playlists" />
+          ? <AuthPrompt />
           : undefined
       }
     />

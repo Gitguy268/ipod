@@ -65,10 +65,10 @@ const _ArtistsView = ({
       loading={isAuthorized && !isOffline && isLoading}
       loadingNextItems={isFetchingNextPage}
       onNearEndOfList={handleNearEndOfList}
-      emptyMessage="No saved artists"
+      emptyMessage="No artists"
       emptyContent={
         !isAuthorized || isOffline
-          ? <AuthPrompt message="Sign in to view your artists" />
+          ? <AuthPrompt />
           : undefined
       }
     />

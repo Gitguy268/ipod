@@ -48,12 +48,12 @@ const _HomeView = () => {
         viewId: "settings",
         preview: SplitScreenPreview.Settings,
       },
-      ...getConditionalOption(!!signInOptions, {
-        type: "actionSheet",
-        label: "Sign in",
-        listOptions: signInOptions ?? [],
-        preview: SplitScreenPreview.Music,
-      }),
+      ...(signInOptions ?? []).map(
+        (option): SelectableListOption => ({
+          ...option,
+          preview: SplitScreenPreview.Music,
+        })
+      ),
       ...getConditionalOption(!!nowPlayingItem, {
         type: "view",
         label: strings.nowPlaying,

@@ -113,7 +113,7 @@ const CENTER_BUTTON_SIZE = 90;
  * which can be listened to by other components.
  */
 export const ClickWheel = () => {
-  const { deviceTheme } = useSettings();
+  const { deviceTheme, displayMode } = useSettings();
 
   const iconColor = useMemo(
     () => getTheme(deviceTheme).clickwheel.button,
@@ -246,8 +246,36 @@ export const ClickWheel = () => {
   );
 
   const handleKeyPress = useCallback(
-    (event: KeyboardEvent) => dispatchKeyboardEvent(event.key),
-    []
+    (event: KeyboardEvent) => {
+      if (displayMode === "full") {
+        dispatchKeyboardEvent(event.key);
+        return;
+      }
+
+      // The iPod is hidden in the other modes, so its menus must not react.
+      // Only the playback keys work, and not while a button or slider has keyboard focus.
+      if (
+        event.target instanceof HTMLButtonElement ||
+        event.target instanceof HTMLInputElement
+      ) {
+        return;
+      }
+
+      switch (event.key) {
+        case " ":
+        case "Spacebar":
+          event.preventDefault();
+          dispatchPlayPauseClickEvent();
+          break;
+        case "ArrowLeft":
+          dispatchBackClickEvent();
+          break;
+        case "ArrowRight":
+          dispatchForwardClickEvent();
+          break;
+      }
+    },
+    [displayMode]
   );
 
   const handleCenterButtonPress = useCallback(() => {
@@ -281,7 +309,20 @@ export const ClickWheel = () => {
     dispatchMenuLongPressEvent();
   }, []);
 
+  /**
+   * A button keeps focus after it is clicked with the mouse, and would then take
+   * the next press of Space for itself. Buttons reached with the keyboard keep focus.
+   */
+  const handleDocumentClick = useCallback((event: MouseEvent) => {
+    const isMouseClick = event.detail > 0;
+
+    if (isMouseClick && document.activeElement instanceof HTMLButtonElement) {
+      document.activeElement.blur();
+    }
+  }, []);
+
   useEventListener("keydown", handleKeyPress);
+  useEventListener("click", handleDocumentClick);
 
   const longPressHandlerProps = useLongPressHandler({
     onPress: handleCenterButtonPress,

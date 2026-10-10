@@ -88,6 +88,12 @@ export const dispatchPlayPauseClickEvent = () =>
 
 export const dispatchIdleEvent = () => window.dispatchEvent(idleEvent);
 
+/** Fired when the last song in the queue finishes. */
+export const PLAYBACK_ENDED_EVENT = "playbackended";
+
+export const dispatchPlaybackEndedEvent = () =>
+  window.dispatchEvent(new Event(PLAYBACK_ENDED_EVENT));
+
 export const dispatchKeyboardEvent = (key: string) => {
   switch (key) {
     case "ArrowUp":

@@ -9,7 +9,7 @@ import { useFetchArtistAlbums } from "@/hooks/utils/useDataFetcher";
 
 interface Props {
   id: string;
-  /** Get artist from the user's library if true (otherwise search Apple Music). */
+  /** Unused: everything comes from the local music folder. */
   inLibrary?: boolean;
 }
 

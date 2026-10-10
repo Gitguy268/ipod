@@ -1,11 +1,9 @@
+import { useMemo } from "react";
+
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
-import {
-  useMKDataFetcher,
-  useMusicKit,
-  useSettings,
-  useSpotifyDataFetcher,
-} from "@/hooks";
+import { useLibrary } from "@/lib/library";
+import { searchIndex } from "@/lib/library/buildIndex";
 
 interface UserLibraryProps {
   inLibrary?: boolean;
@@ -71,20 +69,46 @@ export interface DataFetcher {
   ) => Promise<MediaApi.SearchResults | undefined>;
 }
 
+/** Serves the library that was read from the user's music folder. */
+const useLocalDataFetcher = (): DataFetcher => {
+  const { index } = useLibrary();
+
+  return useMemo(() => {
+    const paginate = <TItem,>(
+      items: TItem[],
+      { pageParam, limit }: MediaApi.PaginationParams
+    ): MediaApi.PaginatedResponse<TItem[]> => {
+      const start = Number(pageParam) || 0;
+      const end = start + limit;
+
+      return {
+        data: items.slice(start, end),
+        nextPageParam: end < items.length ? end : undefined,
+      };
+    };
+
+    return {
+      fetchAlbums: async (params) => paginate(index.albums, params),
+      fetchAlbum: async (id) => index.albumsById.get(id),
+      fetchArtists: async (params) => paginate(index.artists, params),
+      fetchArtistAlbums: async (id) => index.artistsById.get(id)?.albums ?? [],
+      fetchPlaylists: async () => ({ data: [] }),
+      fetchPlaylist: async () => undefined,
+      fetchSearchResults: async (query) => searchIndex(index, query),
+    };
+  }, [index]);
+};
+
 const useResolvedFetcher = () => {
-  const spotifyDataFetcher = useSpotifyDataFetcher();
-  const appleDataFetcher = useMKDataFetcher();
-  const { service, isAppleAuthorized, isSpotifyAuthorized } = useSettings();
-  const { isConfigured } = useMusicKit();
+  const fetcher = useLocalDataFetcher();
+  const { status, version } = useLibrary();
 
-  const enabled =
-    (service === "apple" && isAppleAuthorized && isConfigured) ||
-    (service === "spotify" && isSpotifyAuthorized);
-
-  const fetcher: DataFetcher =
-    service === "spotify" ? spotifyDataFetcher : appleDataFetcher;
-
-  return { fetcher, service, enabled };
+  // The version is part of every query key so a rescan replaces what was cached.
+  return {
+    fetcher,
+    service: `local-${version}`,
+    enabled: status === "ready",
+  };
 };
 
 export const useFetchAlbum = (

@@ -1,6 +1,26 @@
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 import { Screen, Unit } from "@/utils/constants";
 import { DeviceThemeName, getTheme } from "@/utils/themes";
+
+/**
+ * Outside of full mode the iPod is parked off-screen rather than removed,
+ * so views that measure their own layout keep working.
+ */
+export const ShellContainer = styled.div<{ $isHidden: boolean }>`
+  display: contents;
+
+  ${({ $isHidden }) =>
+    $isHidden &&
+    css`
+      display: grid;
+      position: fixed;
+      top: 0;
+      left: -200vw;
+      height: 37em;
+      visibility: hidden;
+      pointer-events: none;
+    `}
+`;
 
 export const Shell = styled.div<{ $deviceTheme: DeviceThemeName }>`
   position: relative;

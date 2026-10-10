@@ -1,7 +1,4 @@
-import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 import withBundleAnalyzer from "@next/bundle-analyzer";
-
-initOpenNextCloudflareForDev();
 
 const analyzer = withBundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
@@ -10,6 +7,7 @@ const analyzer = withBundleAnalyzer({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
+  output: "export",
   basePath: "/ipod",
   turbopack: {},
   allowedDevOrigins: ["127.0.0.1", "localhost"],

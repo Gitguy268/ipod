@@ -6,20 +6,21 @@ import { SelectableListOption } from "@/components/SelectableList";
 import SelectableListView from "@/components/SelectableListView";
 import { SplitScreenPreview } from "@/components/previews";
 import {
+  DisplayMode,
   useAudioPlayer,
-  useMusicKit,
   useSettings,
   useSignInOptions,
-  useSpotifySDK,
   useViewContext,
 } from "@/hooks";
+import { supportsDirectoryPicker, useLibrary } from "@/lib/library";
 
 const THEMES = ["silver", "black", "u2"] as const;
 
-const SERVICE_LABELS = {
-  apple: "Apple Music",
-  spotify: "Spotify",
-} as const;
+const DISPLAY_MODES: { mode: DisplayMode; label: string }[] = [
+  { mode: "compact", label: "Compact" },
+  { mode: "full", label: "Full" },
+  { mode: "massive", label: "Massive" },
+];
 
 const formatCurrentLabel = (label: string, isCurrent: boolean) =>
   `${label}${isCurrent ? " (Current)" : ""}`;
@@ -32,44 +33,29 @@ const getThemeLabel = (theme: (typeof THEMES)[number]) => {
 const _SettingsView = () => {
   const {
     isAuthorized,
-    isAppleAuthorized,
-    isSpotifyAuthorized,
-    isOffline,
-    service,
     deviceTheme,
     setDeviceTheme,
     shuffleMode,
     repeatMode,
     hapticsEnabled,
     setHapticsEnabled,
+    displayMode,
+    setDisplayMode,
   } = useSettings();
   const { setShuffleMode, setRepeatMode } = useAudioPlayer();
-  const { signIn: signInWithApple, signOut: signOutApple } = useMusicKit();
-  const { signOut: signOutSpotify, signIn: signInWithSpotify } =
-    useSpotifySDK();
+  const { chooseFolder, rescan, forget } = useLibrary();
   const signInOptions = useSignInOptions();
   const { reset } = useAudioPlayer();
   const { showPopup } = useViewContext();
 
-  const createResetHandler = useCallback(
-    (handler: () => void | Promise<void>) => () => {
-      reset();
-      handler();
-    },
-    [reset]
-  );
-
-  const createSignOutHandler = useCallback(
-    (serviceName: string, handler: () => void | Promise<void>) => async () => {
-      reset();
-      await handler();
-      showPopup({
-        title: "Signed Out",
-        description: `You have been signed out of ${serviceName}.`,
-      });
-    },
-    [reset, showPopup]
-  );
+  const handleForgetFolder = useCallback(async () => {
+    reset();
+    await forget();
+    showPopup({
+      title: "Folder Removed",
+      description: "Your music files have not been changed.",
+    });
+  }, [forget, reset, showPopup]);
 
   const themeOptions: SelectableListOption[] = useMemo(
     () =>
@@ -82,47 +68,37 @@ const _SettingsView = () => {
     [deviceTheme, setDeviceTheme]
   );
 
-  const serviceOptions: SelectableListOption[] = useMemo(
-    () => [
-      {
+  const displayModeOptions: SelectableListOption[] = useMemo(
+    () =>
+      DISPLAY_MODES.map(({ mode, label }) => ({
         type: "action",
-        isSelected: service === "apple",
-        label: formatCurrentLabel(SERVICE_LABELS.apple, service === "apple"),
-        onSelect: createResetHandler(signInWithApple),
-      },
-      {
-        type: "action",
-        isSelected: service === "spotify",
-        label: formatCurrentLabel(
-          SERVICE_LABELS.spotify,
-          service === "spotify"
-        ),
-        onSelect: createResetHandler(signInWithSpotify),
-      },
-    ],
-    [service, createResetHandler, signInWithApple, signInWithSpotify]
+        isSelected: displayMode === mode,
+        label: formatCurrentLabel(label, displayMode === mode),
+        onSelect: () => setDisplayMode(mode),
+      })),
+    [displayMode, setDisplayMode]
   );
 
-  const signOutOptions: SelectableListOption[] = useMemo(
+  const folderOptions: SelectableListOption[] = useMemo(
     () => [
-      ...getConditionalOption(isAppleAuthorized, {
+      {
         type: "action",
-        label: SERVICE_LABELS.apple,
-        onSelect: createSignOutHandler(SERVICE_LABELS.apple, signOutApple),
-      }),
-      ...getConditionalOption(isSpotifyAuthorized, {
+        label: "Choose Folder",
+        onSelect: chooseFolder,
+      },
+      {
         type: "action",
-        label: SERVICE_LABELS.spotify,
-        onSelect: createSignOutHandler(SERVICE_LABELS.spotify, signOutSpotify),
-      }),
+        // Browsers that can't remember a folder have to be shown it again.
+        label: supportsDirectoryPicker() ? "Rescan" : "Reload Folder",
+        onSelect: rescan,
+      },
+      {
+        type: "action",
+        label: "Remove Folder",
+        onSelect: handleForgetFolder,
+      },
     ],
-    [
-      isAppleAuthorized,
-      isSpotifyAuthorized,
-      createSignOutHandler,
-      signOutApple,
-      signOutSpotify,
-    ]
+    [chooseFolder, rescan, handleForgetFolder]
   );
 
   const options: SelectableListOption[] = useMemo(
@@ -133,12 +109,17 @@ const _SettingsView = () => {
         viewId: "about",
         preview: SplitScreenPreview.Settings,
       },
-      /** Add an option to select between services signed into more than one. */
-      ...getConditionalOption(isAuthorized && !isOffline, {
+      {
         type: "actionSheet",
-        label: "Choose service",
-        listOptions: serviceOptions,
-        preview: SplitScreenPreview.Service,
+        label: "Display mode",
+        listOptions: displayModeOptions,
+        preview: SplitScreenPreview.Settings,
+      },
+      ...getConditionalOption(isAuthorized, {
+        type: "actionSheet",
+        label: "Music folder",
+        listOptions: folderOptions,
+        preview: SplitScreenPreview.Music,
       }),
       /** Add shuffle mode options */
       ...getConditionalOption(isAuthorized, {
@@ -217,27 +198,19 @@ const _SettingsView = () => {
         ],
         preview: SplitScreenPreview.Settings,
       },
-      ...getConditionalOption(!!signInOptions, {
-        type: "actionSheet",
-        label: "Sign in",
-        listOptions: signInOptions ?? [],
-        preview: SplitScreenPreview.Music,
-      }),
-      /** Show the signout option for any services that are authenticated. */
-      ...getConditionalOption(isAuthorized && !isOffline, {
-        type: "actionSheet",
-        label: "Sign out",
-        listOptions: signOutOptions,
-        preview: SplitScreenPreview.Service,
-      }),
+      ...(signInOptions ?? []).map(
+        (option): SelectableListOption => ({
+          ...option,
+          preview: SplitScreenPreview.Music,
+        })
+      ),
     ],
     [
       isAuthorized,
-      isOffline,
-      serviceOptions,
+      displayModeOptions,
+      folderOptions,
       themeOptions,
       signInOptions,
-      signOutOptions,
       shuffleMode,
       setShuffleMode,
       repeatMode,
