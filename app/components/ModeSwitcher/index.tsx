@@ -73,12 +73,12 @@ const MODES: { mode: DisplayMode; label: string }[] = [
 
 /** Switches between the mini player, the iPod, and the window-filling player. */
 const ModeSwitcher = () => {
-  const { displayMode, setDisplayMode } = useSettings();
+  const { displayMode, setDisplayMode, isAuthorized } = useSettings();
 
   return (
     <Container $onBlack={displayMode === "massive"}>
-      {/* The other two modes show this button inside their own layout. */}
-      {displayMode === "full" && <FolderButton />}
+      {/* Until a library is loaded, the other two modes show this inside their own layout. */}
+      {(displayMode === "full" || isAuthorized) && <FolderButton />}
       <Segments role="group" aria-label="Display mode">
         {MODES.map(({ mode, label }) => (
           <Segment

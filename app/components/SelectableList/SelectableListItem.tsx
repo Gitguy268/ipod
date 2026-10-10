@@ -3,7 +3,7 @@ import { Unit } from "@/utils/constants";
 
 import { SelectableListOption } from ".";
 import { useAudioPlayer } from "@/hooks";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import * as Utils from "@/utils";
 import arrowRight from "@public/arrow_right.svg";
 import volumeFull from "@public/volume_full.svg";
@@ -104,4 +104,6 @@ const SelectableListItem = ({ option, isActive }: Props) => {
   );
 };
 
-export default SelectableListItem;
+// Scrolling changes which row is active on every tick. Without this, every row
+// in a long list would be drawn again each time.
+export default memo(SelectableListItem);

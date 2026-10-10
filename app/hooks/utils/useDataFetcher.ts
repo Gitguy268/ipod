@@ -37,6 +37,9 @@ export interface DataFetcher {
     params: MediaApi.PaginationParams
   ) => Promise<MediaApi.PaginatedResponse<MediaApi.Album[]> | undefined>;
   fetchAlbum: (id: string) => Promise<MediaApi.Album | undefined>;
+  fetchSongs: (
+    params: MediaApi.PaginationParams
+  ) => Promise<MediaApi.PaginatedResponse<MediaApi.Song[]> | undefined>;
   fetchArtists: (
     params: MediaApi.PaginationParams
   ) => Promise<MediaApi.PaginatedResponse<MediaApi.Artist[]> | undefined>;
@@ -71,6 +74,7 @@ const useLocalDataFetcher = (): DataFetcher => {
     return {
       fetchAlbums: async (params) => paginate(index.albums, params),
       fetchAlbum: async (id) => index.albumsById.get(id),
+      fetchSongs: async (params) => paginate(index.songs, params),
       fetchArtists: async (params) => paginate(index.artists, params),
       fetchArtistAlbums: async (id) => index.artistsById.get(id)?.albums ?? [],
       fetchPlaylists: async () => ({ data: [] }),
@@ -114,6 +118,19 @@ export const useFetchAlbums = (
     queryKey: [service, "albums"],
     queryFn: ({ pageParam }) =>
       fetcher.fetchAlbums({ pageParam, limit: 50 }),
+    staleTime: STALE_TIME.library,
+    enabled: enabled && !options.lazy,
+    getNextPageParam: (lastPage) => lastPage?.nextPageParam,
+    initialPageParam: 0 as number | string,
+  });
+};
+
+export const useFetchSongs = (options: CommonFetcherProps) => {
+  const { fetcher, service, enabled } = useResolvedFetcher();
+
+  return useInfiniteQuery({
+    queryKey: [service, "songs"],
+    queryFn: ({ pageParam }) => fetcher.fetchSongs({ pageParam, limit: 100 }),
     staleTime: STALE_TIME.library,
     enabled: enabled && !options.lazy,
     getNextPageParam: (lastPage) => lastPage?.nextPageParam,

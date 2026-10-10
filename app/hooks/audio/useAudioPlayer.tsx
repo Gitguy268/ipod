@@ -91,7 +91,7 @@ export const AudioPlayerProvider = ({ children }: Props) => {
     setShuffleMode: updateShuffleModeSetting,
     setRepeatMode: updateRepeatModeSetting,
   } = useSettings();
-  const { getFile } = useLibrary();
+  const { getFile, index } = useLibrary();
   const [volume, setVolume] = useState(0.5);
   const [nowPlayingItem, setNowPlayingItem] = useState<MediaApi.MediaItem>();
   const [playbackInfo, setPlaybackInfo] = useState(defaultPlaybackInfoState);
@@ -105,6 +105,8 @@ export const AudioPlayerProvider = ({ children }: Props) => {
   const objectUrlRef = useRef<string | undefined>(undefined);
   const loadIdRef = useRef(0);
   const failureCountRef = useRef(0);
+  /** Whether the current song got as far as actually playing. */
+  const hasStartedRef = useRef(false);
 
   const shuffleModeRef = useRef(shuffleMode);
   const repeatModeRef = useRef(repeatMode);
@@ -170,6 +172,7 @@ export const AudioPlayerProvider = ({ children }: Props) => {
 
       const loadId = ++loadIdRef.current;
       const audio = getAudio();
+      hasStartedRef.current = false;
 
       queueIndexRef.current = index;
       setNowPlayingItem(song);
@@ -192,6 +195,7 @@ export const AudioPlayerProvider = ({ children }: Props) => {
         audio.src = objectUrlRef.current;
 
         await audio.play();
+        hasStartedRef.current = true;
         failureCountRef.current = 0;
       } catch (error) {
         if (loadId !== loadIdRef.current) {
@@ -389,6 +393,22 @@ export const AudioPlayerProvider = ({ children }: Props) => {
     [play]
   );
 
+  // The library hands out fresh song objects when it changes (for example once
+  // artwork has been read), so point the queue at the current ones.
+  useEffect(() => {
+    const refresh = (songs: MediaApi.Song[]) =>
+      songs.map((song) => index.songsById.get(song.id) ?? song);
+
+    queueRef.current = refresh(queueRef.current);
+    orderedQueueRef.current = refresh(orderedQueueRef.current);
+
+    const current = queueRef.current[queueIndexRef.current];
+
+    if (current) {
+      setNowPlayingItem(current);
+    }
+  }, [index]);
+
   useEffect(() => {
     queueBridge.playNext = playNext;
     queueBridge.playLater = playLater;
@@ -426,6 +446,19 @@ export const AudioPlayerProvider = ({ children }: Props) => {
     const handleWaiting = () =>
       setPlaybackInfo((prevState) => ({ ...prevState, isLoading: true }));
 
+    // A file that turns out to be damaged part-way through. Files that never
+    // start are dealt with where they are loaded.
+    const handleError = () => {
+      if (hasStartedRef.current && audio.error) {
+        hasStartedRef.current = false;
+        console.error(
+          `Unable to keep playing: ${queueRef.current[queueIndexRef.current]?.id}`,
+          audio.error
+        );
+        advance();
+      }
+    };
+
     const handleEnded = () => {
       if (repeatModeRef.current === "one") {
         audio.currentTime = 0;
@@ -441,6 +474,7 @@ export const AudioPlayerProvider = ({ children }: Props) => {
     audio.addEventListener("waiting", handleWaiting);
     audio.addEventListener("durationchange", updatePlaybackInfo);
     audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("error", handleError);
 
     return () => {
       audio.removeEventListener("playing", handlePlaying);
@@ -448,6 +482,7 @@ export const AudioPlayerProvider = ({ children }: Props) => {
       audio.removeEventListener("waiting", handleWaiting);
       audio.removeEventListener("durationchange", updatePlaybackInfo);
       audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("error", handleError);
     };
   }, [advance, getAudio, updatePlaybackInfo]);
 

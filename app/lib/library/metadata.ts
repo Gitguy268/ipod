@@ -20,6 +20,9 @@ export const readTags = async (
       trackNumber: common.track.no,
       discNumber: common.disk.no,
       durationMs: format.duration ? format.duration * 1000 : undefined,
+      genre: common.genre?.[0],
+      year: common.year,
+      codec: format.codec,
     };
   } catch (error) {
     console.warn(`Unable to read tags: ${entry.path}`, error);

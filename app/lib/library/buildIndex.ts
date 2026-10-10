@@ -53,6 +53,9 @@ export const toTrackRecord = (
     trackNumber: tags?.trackNumber || (numbered ? Number(numbered[1]) : 0),
     discNumber: tags?.discNumber || 1,
     durationMs: Math.round(tags?.durationMs ?? 0),
+    genre: tags?.genre?.trim() || undefined,
+    year: tags?.year || undefined,
+    codec: tags?.codec,
   };
 };
 

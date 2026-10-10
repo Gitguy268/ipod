@@ -5,10 +5,8 @@ import { SelectableListOption } from "@/components/SelectableList";
 import SelectableListView from "@/components/SelectableListView";
 import { SplitScreenPreview } from "@/components/previews";
 import { useAudioPlayer } from "@/hooks";
-import { useLibrary } from "@/lib/library";
 
 const MusicViewComponent = () => {
-  const { index } = useLibrary();
   const { nowPlayingItem } = useAudioPlayer();
 
   const options: SelectableListOption[] = useMemo(() => {
@@ -35,7 +33,6 @@ const MusicViewComponent = () => {
         type: "view",
         label: "Songs",
         viewId: "songs",
-        props: { songs: index.songs },
         preview: SplitScreenPreview.Music,
       },
       {
@@ -56,7 +53,7 @@ const MusicViewComponent = () => {
     }
 
     return arr;
-  }, [index.songs, nowPlayingItem]);
+  }, [nowPlayingItem]);
 
   return <SelectableListView viewId="music" options={options} />;
 };

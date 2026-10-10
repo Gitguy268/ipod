@@ -19,6 +19,10 @@ export interface TrackRecord {
   trackNumber: number;
   discNumber: number;
   durationMs: number;
+  genre?: string;
+  year?: number;
+  /** The audio encoding inside the file, e.g. "ALAC". Not every browser plays every one. */
+  codec?: string;
 }
 
 /** Tags as read from a file. Anything missing is filled in from the file path. */
@@ -30,6 +34,9 @@ export interface RawTags {
   trackNumber?: number | null;
   discNumber?: number | null;
   durationMs?: number;
+  genre?: string;
+  year?: number;
+  codec?: string;
 }
 
 export interface LibraryIndex {

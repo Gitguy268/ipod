@@ -8,6 +8,7 @@ import {
 } from "@/hooks";
 import {
   ClickWheel,
+  DropTarget,
   MassivePlayer,
   MiniPlayer,
   ModeSwitcher,
@@ -51,6 +52,7 @@ const Ipod = () => {
                 {([{ deviceTheme, displayMode }]) => (
                   <>
                     <ModeSwitcher />
+                    <DropTarget />
                     {displayMode === "compact" && <MiniPlayer />}
                     {displayMode === "massive" && <MassivePlayer />}
                     {/* The iPod stays mounted in every mode so it keeps its place in the menus. */}

@@ -13,6 +13,7 @@ import {
   useViewContext,
 } from "@/hooks";
 import { supportsDirectoryPicker, useLibrary } from "@/lib/library";
+import { pluralize } from "@/utils/strings";
 
 const THEMES = ["silver", "black", "u2"] as const;
 
@@ -21,6 +22,20 @@ const DISPLAY_MODES: { mode: DisplayMode; label: string }[] = [
   { mode: "full", label: "Full" },
   { mode: "massive", label: "Massive" },
 ];
+
+const getLibrarySummary = (albumCount: number, skippedCount: number) => {
+  const albums = `${albumCount.toLocaleString()} ${pluralize("album", "albums", albumCount)}.`;
+
+  if (!skippedCount) {
+    return albums;
+  }
+
+  return `${albums} ${skippedCount.toLocaleString()} ${pluralize(
+    "file was",
+    "files were",
+    skippedCount
+  )} left out because this browser can't play the format.`;
+};
 
 const formatCurrentLabel = (label: string, isCurrent: boolean) =>
   `${label}${isCurrent ? " (Current)" : ""}`;
@@ -43,7 +58,7 @@ const SettingsViewComponent = () => {
     setDisplayMode,
   } = useSettings();
   const { setShuffleMode, setRepeatMode } = useAudioPlayer();
-  const { chooseFolder, rescan, forget } = useLibrary();
+  const { chooseFolder, rescan, forget, index, skippedCount } = useLibrary();
   const chooseFolderOptions = useFolderOptions();
   const { reset } = useAudioPlayer();
   const { showPopup } = useViewContext();
@@ -119,6 +134,13 @@ const SettingsViewComponent = () => {
         type: "actionSheet",
         label: "Music folder",
         listOptions: folderOptions,
+        preview: SplitScreenPreview.Music,
+      }),
+      ...getConditionalOption(isAuthorized, {
+        type: "popup",
+        label: "Library",
+        title: `${index.songs.length.toLocaleString()} ${pluralize("song", "songs", index.songs.length)}`,
+        description: getLibrarySummary(index.albums.length, skippedCount),
         preview: SplitScreenPreview.Music,
       }),
       /** Add shuffle mode options */
@@ -207,6 +229,8 @@ const SettingsViewComponent = () => {
     ],
     [
       isAuthorized,
+      index,
+      skippedCount,
       displayModeOptions,
       folderOptions,
       themeOptions,

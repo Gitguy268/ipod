@@ -15,7 +15,9 @@ const nextConfig = {
     styledComponents: true,
   },
   experimental: {
-    useTypeScriptCli: true,
+    // "typescript" resolves to TypeScript 6 here so that tools needing its JavaScript API
+    // (ESLint, and Next.js itself) keep working; `pnpm type-check` runs TypeScript 7.
+    useTypeScriptCli: false,
   },
 };
 

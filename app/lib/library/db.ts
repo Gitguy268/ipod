@@ -5,7 +5,7 @@ const DB_NAME = "ipodLocalLibrary";
  * The cached tags and thumbnails are thrown away and read again from the files;
  * the remembered folder is kept.
  */
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 /** Stores that only hold data which can be rebuilt from the music files. */
 const REBUILDABLE_STORES: StoreName[] = ["tracks", "artwork"];

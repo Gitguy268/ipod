@@ -19,7 +19,8 @@ const Container = styled.div`
 const CoverFlowViewComponent = () => {
   const { hideView } = useViewContext();
   const { isAuthorized } = useSettings();
-  const { data, isLoading } = useFetchAlbums({});
+  const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } =
+    useFetchAlbums({});
 
   const albums = data?.pages.flatMap((page) => page?.data ?? []) ?? [];
 
@@ -28,6 +29,12 @@ const CoverFlowViewComponent = () => {
       hideView();
     }
   }, [hideView, isAuthorized, isLoading]);
+
+  const handleNearEnd = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   useEventListener<IpodEvent>("menuclick", handleMenuClick);
 
@@ -38,7 +45,7 @@ const CoverFlowViewComponent = () => {
       ) : isLoading ? (
         <LoadingScreen backgroundColor="white" />
       ) : (
-        <CoverFlow albums={albums} />
+        <CoverFlow albums={albums} onNearEnd={handleNearEnd} />
       )}
     </Container>
   );

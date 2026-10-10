@@ -65,11 +65,16 @@ const Text = styled.h3<TextProps>`
   }
 `;
 
+/** Ask for more albums when this many are left ahead of the centre cover. */
+const NEAR_END_COUNT = 15;
+
 interface Props {
   albums: MediaApi.Album[];
+  /** Called as the user approaches the last album that has been loaded. */
+  onNearEnd?: () => void;
 }
 
-const CoverFlow = ({ albums }: Props) => {
+const CoverFlow = ({ albums, onNearEnd }: Props) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [midpoint, setMidpoint] = useState<Point>({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
@@ -99,8 +104,12 @@ const CoverFlow = ({ albums }: Props) => {
   const forwardScroll = useCallback(() => {
     if (activeIndex < albums.length - 1 && !selectedAlbum && !playingAlbum) {
       setActiveIndex(activeIndex + 1);
+
+      if (activeIndex >= albums.length - NEAR_END_COUNT) {
+        onNearEnd?.();
+      }
     }
-  }, [activeIndex, albums.length, playingAlbum, selectedAlbum]);
+  }, [activeIndex, albums.length, onNearEnd, playingAlbum, selectedAlbum]);
 
   const backwardScroll = useCallback(() => {
     if (activeIndex > 0 && !selectedAlbum && !playingAlbum) {

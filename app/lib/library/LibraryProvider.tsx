@@ -8,6 +8,8 @@ import {
   useState,
 } from "react";
 
+import { useQueryClient } from "@tanstack/react-query";
+
 import { makeThumbnail } from "./artwork";
 import {
   buildIndex,
@@ -20,8 +22,11 @@ import {
 import { dbClear, dbGet, dbGetAll, dbReplaceAll, dbSet } from "./db";
 import { isFixtureRequested, loadFixtureEntries } from "./fixture";
 import {
+  canPlayCodec,
   classifyEntries,
   DirectoryHandle,
+  DroppedFolder,
+  entriesFromDirectoryEntry,
   entriesFromHandle,
   pickDirectoryHandle,
   pickWithInput,
@@ -29,6 +34,7 @@ import {
 } from "./folderAccess";
 import { mapWithConcurrency, readEmbeddedPicture, readTags } from "./metadata";
 import { queueBridge } from "./queueBridge";
+import { throttle } from "./throttle";
 import {
   LibraryEntry,
   LibraryIndex,
@@ -40,6 +46,8 @@ const FOLDER_HANDLE_KEY = "folder";
 const TAG_CONCURRENCY = 6;
 const ARTWORK_CONCURRENCY = 4;
 const PROGRESS_INTERVAL_MS = 150;
+/** How often the library is refreshed while artwork is still being read. */
+const ARTWORK_PUBLISH_INTERVAL_MS = 1500;
 /** Full-size covers are several megabytes each, so only a few stay in memory. */
 const MAX_FULL_ARTWORK = 6;
 
@@ -57,13 +65,20 @@ interface Progress {
 
 interface LibraryState {
   status: LibraryStatus;
+  /** How far the reading of song tags has got, while `status` is "scanning". */
   progress: Progress;
+  /** How far the reading of album artwork has got. This carries on after the library is usable. */
+  artworkProgress: Progress;
+  /** Music files left out because this browser can't play their format. */
+  skippedCount: number;
   /** Changes every time the library contents change. */
   version: number;
   folderName?: string;
   error?: string;
   index: LibraryIndex;
   chooseFolder: () => Promise<void>;
+  /** Loads a folder that was dragged onto the page. */
+  openDropped: (folder: DroppedFolder) => Promise<void>;
   /** Asks the browser to re-allow a folder remembered from an earlier visit. */
   reconnect: () => Promise<void>;
   rescan: () => Promise<void>;
@@ -74,6 +89,13 @@ interface LibraryState {
 }
 
 const EMPTY_INDEX = buildIndex([]);
+
+/**
+ * Records how long a stage of loading took. Read the results in the browser's
+ * Performance panel, or with `performance.getEntriesByType("measure")`.
+ */
+const measure = (stage: string, start: number) =>
+  performance.measure(`library:${stage}`, { start, end: performance.now() });
 
 /** A cover image next to the track, or beside its "CD1"-style disc folder. */
 const findCover = (covers: Map<string, LibraryEntry>, trackPath: string) =>
@@ -91,6 +113,12 @@ export const LibraryProvider = ({ children }: Props) => {
   // Starts as "scanning" until we know whether a folder was remembered.
   const [status, setStatus] = useState<LibraryStatus>("scanning");
   const [progress, setProgress] = useState<Progress>({ done: 0, total: 0 });
+  const [artworkProgress, setArtworkProgress] = useState<Progress>({
+    done: 0,
+    total: 0,
+  });
+  const [skippedCount, setSkippedCount] = useState(0);
+  const queryClient = useQueryClient();
   const [version, setVersion] = useState(0);
   const [folderName, setFolderName] = useState<string>();
   const [error, setError] = useState<string>();
@@ -142,26 +170,26 @@ export const LibraryProvider = ({ children }: Props) => {
     async (entries: LibraryEntry[], name: string) => {
       const runId = ++runIdRef.current;
       const isCurrent = () => runId === runIdRef.current;
+      const startedAt = performance.now();
 
       setError(undefined);
       setStatus("scanning");
       setFolderName(name);
 
-      const { audio, coversByDirectory } = classifyEntries(entries);
+      const { audio, coversByDirectory, unplayableCount } =
+        classifyEntries(entries);
 
-      let done = 0;
-      let total = audio.length;
-      let lastReport = 0;
-
-      const report = (force = false) => {
-        const now = performance.now();
-        if (isCurrent() && (force || now - lastReport > PROGRESS_INTERVAL_MS)) {
-          lastReport = now;
-          setProgress({ done, total });
+      const reportProgress = throttle((progress: Progress) => {
+        if (isCurrent()) {
+          setProgress(progress);
         }
-      };
+      }, PROGRESS_INTERVAL_MS);
 
-      report(true);
+      const reportArtwork = throttle((progress: Progress) => {
+        if (isCurrent()) {
+          setArtworkProgress(progress);
+        }
+      }, PROGRESS_INTERVAL_MS);
 
       // Tags: only files that are new or changed since the last visit get parsed.
       const cachedTracks = new Map(
@@ -171,7 +199,10 @@ export const LibraryProvider = ({ children }: Props) => {
         ])
       );
 
-      const records = await mapWithConcurrency(
+      let tagsDone = 0;
+      setProgress({ done: 0, total: audio.length });
+
+      const allRecords = await mapWithConcurrency(
         audio,
         TAG_CONCURRENCY,
         async (entry) => {
@@ -179,8 +210,7 @@ export const LibraryProvider = ({ children }: Props) => {
             cachedTracks.get(getEntryKey(entry)) ??
             toTrackRecord(entry, await readTags(entry), name);
 
-          done++;
-          report();
+          reportProgress({ done: ++tagsDone, total: audio.length });
 
           return record;
         }
@@ -190,14 +220,21 @@ export const LibraryProvider = ({ children }: Props) => {
         return;
       }
 
+      measure("tags", startedAt);
+
+      // Files in a format this browser can't decode stay out of the library.
+      const records = allRecords.filter((record) => canPlayCodec(record.codec));
+      const albums = groupByAlbum(records);
+
       entriesRef.current = new Map(audio.map((entry) => [entry.path, entry]));
       coversRef.current = coversByDirectory;
+      albumTracksRef.current = albums;
+      hasLibraryRef.current = true;
 
-      // Artwork: one thumbnail per album.
-      const albums = groupByAlbum(records);
-      total += albums.size;
-      report(true);
+      await dbReplaceAll("tracks", allRecords);
 
+      // Artwork: one thumbnail per album. Thumbnails made on an earlier visit are
+      // used straight away; the rest are filled in while the library is already usable.
       const cachedArtwork = new Map(
         (await dbGetAll<ArtworkRecord>("artwork")).map((record) => [
           record.albumId,
@@ -205,59 +242,83 @@ export const LibraryProvider = ({ children }: Props) => {
         ])
       );
 
-      const artworkRecords = await mapWithConcurrency(
-        [...albums],
-        ARTWORK_CONCURRENCY,
-        async ([albumId, tracks]): Promise<ArtworkRecord> => {
-          const cover = findCover(coversByDirectory, tracks[0].path);
-          const sourceKey = `${getEntryKey(tracks[0])}#${
-            cover ? getEntryKey(cover) : ""
-          }`;
-
-          let record = cachedArtwork.get(albumId);
-
-          if (record?.sourceKey !== sourceKey) {
-            const original = await findArtwork(tracks);
-            record = {
-              albumId,
-              sourceKey,
-              thumbnail: original && (await makeThumbnail(original)),
-            };
-          }
-
-          done++;
-          report();
-
-          return record;
-        }
-      );
-
-      if (!isCurrent()) {
-        return;
-      }
-
-      await dbReplaceAll("tracks", records);
-      await dbReplaceAll("artwork", artworkRecords);
-
       releaseArtwork(true);
 
+      const artworkRecords: ArtworkRecord[] = [];
       const artworkUrls: Record<string, string> = {};
+      const missing: { albumId: string; tracks: TrackRecord[]; sourceKey: string }[] =
+        [];
 
-      for (const { albumId, thumbnail } of artworkRecords) {
-        if (thumbnail) {
-          const url = URL.createObjectURL(thumbnail);
-          artworkUrls[albumId] = url;
+      const addArtwork = (record: ArtworkRecord) => {
+        artworkRecords.push(record);
+
+        if (record.thumbnail) {
+          const url = URL.createObjectURL(record.thumbnail);
+          artworkUrls[record.albumId] = url;
           thumbnailUrlsRef.current.push(url);
+        }
+      };
+
+      for (const [albumId, tracks] of albums) {
+        const cover = findCover(coversByDirectory, tracks[0].path);
+        const sourceKey = `${getEntryKey(tracks[0])}#${
+          cover ? getEntryKey(cover) : ""
+        }`;
+        const cached = cachedArtwork.get(albumId);
+
+        if (cached?.sourceKey === sourceKey) {
+          addArtwork(cached);
+        } else {
+          missing.push({ albumId, tracks, sourceKey });
         }
       }
 
-      albumTracksRef.current = albums;
-      hasLibraryRef.current = true;
+      const publish = () => {
+        if (isCurrent()) {
+          setIndex(buildIndex(records, artworkUrls));
+        }
+      };
 
-      setIndex(buildIndex(records, artworkUrls));
+      publish();
       setVersion((prev) => prev + 1);
-      setProgress({ done: total, total });
+      setSkippedCount(unplayableCount + allRecords.length - records.length);
+      setArtworkProgress({ done: 0, total: missing.length });
       setStatus("ready");
+      measure("browsable", startedAt);
+
+      if (missing.length) {
+        const artworkStartedAt = performance.now();
+        const publishSoon = throttle(publish, ARTWORK_PUBLISH_INTERVAL_MS);
+        let artworkDone = 0;
+
+        await mapWithConcurrency(
+          missing,
+          ARTWORK_CONCURRENCY,
+          async ({ albumId, tracks, sourceKey }) => {
+            const original = await findArtwork(tracks);
+            const thumbnail = original && (await makeThumbnail(original));
+
+            if (!isCurrent()) {
+              return;
+            }
+
+            addArtwork({ albumId, sourceKey, thumbnail });
+            reportArtwork({ done: ++artworkDone, total: missing.length });
+            publishSoon();
+          }
+        );
+
+        if (!isCurrent()) {
+          return;
+        }
+
+        measure("artwork", artworkStartedAt);
+        publish();
+        setArtworkProgress({ done: missing.length, total: missing.length });
+        await dbReplaceAll("artwork", artworkRecords);
+      }
+
+      measure("total", startedAt);
     },
     [findArtwork, releaseArtwork]
   );
@@ -310,6 +371,29 @@ export const LibraryProvider = ({ children }: Props) => {
     [guard, loadEntries, scanHandle]
   );
 
+  const openDropped = useCallback(
+    (folder: DroppedFolder) =>
+      guard(async () => {
+        const handle = await folder.handle;
+
+        if (handle) {
+          handleRef.current = handle;
+          await dbSet("settings", FOLDER_HANDLE_KEY, handle);
+          await scanHandle(handle);
+        } else if (folder.directory) {
+          handleRef.current = undefined;
+          setStatus("scanning");
+          setProgress({ done: 0, total: 0 });
+          setFolderName(folder.name);
+          await loadEntries(
+            await entriesFromDirectoryEntry(folder.directory),
+            folder.name
+          );
+        }
+      }),
+    [guard, loadEntries, scanHandle]
+  );
+
   const reconnect = useCallback(
     () =>
       guard(async () => {
@@ -346,6 +430,8 @@ export const LibraryProvider = ({ children }: Props) => {
 
     setIndex(EMPTY_INDEX);
     setVersion((prev) => prev + 1);
+    setSkippedCount(0);
+    setArtworkProgress({ done: 0, total: 0 });
     setFolderName(undefined);
     setError(undefined);
     setStatus("empty");
@@ -429,6 +515,11 @@ export const LibraryProvider = ({ children }: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Lists that are already on screen pick up artwork as it arrives.
+  useEffect(() => {
+    queryClient.invalidateQueries();
+  }, [index, queryClient]);
+
   useEffect(() => {
     queueBridge.resolveSongs = (type, id) => {
       if (type === "album") {
@@ -444,11 +535,14 @@ export const LibraryProvider = ({ children }: Props) => {
     () => ({
       status,
       progress,
+      artworkProgress,
+      skippedCount,
       version,
       folderName,
       error,
       index,
       chooseFolder,
+      openDropped,
       reconnect,
       rescan,
       forget,
@@ -458,11 +552,14 @@ export const LibraryProvider = ({ children }: Props) => {
     [
       status,
       progress,
+      artworkProgress,
+      skippedCount,
       version,
       folderName,
       error,
       index,
       chooseFolder,
+      openDropped,
       reconnect,
       rescan,
       forget,

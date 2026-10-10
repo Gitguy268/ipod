@@ -41,8 +41,14 @@ interface Props {
 
 /** The one place a click opens the system folder picker. */
 const FolderButton = ({ showWhenReady, className }: Props) => {
-  const { status, progress, folderName, chooseFolder, reconnect } =
-    useLibrary();
+  const {
+    status,
+    progress,
+    artworkProgress,
+    folderName,
+    chooseFolder,
+    reconnect,
+  } = useLibrary();
 
   switch (status) {
     case "scanning":
@@ -60,10 +66,19 @@ const FolderButton = ({ showWhenReady, className }: Props) => {
         </Button>
       );
     case "ready":
-      return showWhenReady ? (
-        <Button className={className} onClick={chooseFolder}>
-          Choose another folder
-        </Button>
+      if (showWhenReady) {
+        return (
+          <Button className={className} onClick={chooseFolder}>
+            Choose another folder
+          </Button>
+        );
+      }
+
+      return artworkProgress.done < artworkProgress.total ? (
+        <Status className={className} role="status">
+          Loading artwork {artworkProgress.done.toLocaleString()} of{" "}
+          {artworkProgress.total.toLocaleString()}
+        </Status>
       ) : null;
     default:
       return (

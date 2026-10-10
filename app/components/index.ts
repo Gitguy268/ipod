@@ -6,6 +6,7 @@ export * from "./ClickWheel";
 export { default as FolderPrompt } from "./FolderPrompt";
 export { default as BatteryIndicator } from "./BatteryIndicator";
 export { default as Controls } from "./Controls";
+export { default as DropTarget } from "./DropTarget";
 export { default as ErrorScreen } from "./ErrorScreen";
 export { default as FolderButton } from "./FolderButton";
 export { default as Header } from "./Header";

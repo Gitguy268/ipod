@@ -27,16 +27,20 @@ const MusicPreview = () => {
   } = useFetchAlbums({});
 
   const artworkUrls = useMemo(() => {
-    if (albums && !error) {
-      return albums.pages.flatMap(
-        (page) =>
-          page?.data
-            .map((album) => getArtwork(300, album.artwork?.url))
-            .filter((url): url is string => !!url) ?? []
-      );
+    if (!albums || error) {
+      return [];
     }
 
-    return [];
+    // Albums without artwork all share one placeholder image, so show it at most once,
+    // and only when there is nothing better.
+    const urls = albums.pages.flatMap(
+      (page) =>
+        page?.data
+          .map((album) => album.artwork?.url)
+          .filter((url): url is string => !!url) ?? []
+    );
+
+    return urls.length ? [...new Set(urls)] : [getArtwork(300)];
   }, [albums, error]);
 
   return (
