@@ -43,10 +43,19 @@ export interface LibraryIndex {
   songs: MediaApi.Song[];
   albums: MediaApi.Album[];
   artists: MediaApi.Artist[];
+  genres: MediaApi.Genre[];
+  playlists: MediaApi.Playlist[];
+  playlistsById: Map<string, MediaApi.Playlist>;
   songsById: Map<string, MediaApi.Song>;
   albumsById: Map<string, MediaApi.Album>;
   artistsById: Map<string, MediaApi.Artist>;
   albumIdBySongId: Map<string, string>;
+}
+
+/** A playlist file as found in the folder, before its lines are matched to songs. */
+export interface PlaylistFile {
+  path: string;
+  text: string;
 }
 
 export type LibraryStatus = "empty" | "needsPermission" | "scanning" | "ready";

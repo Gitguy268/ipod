@@ -1,4 +1,9 @@
-import type { LibraryIndex, RawTags, TrackRecord } from "./types";
+import type {
+  LibraryIndex,
+  PlaylistFile,
+  RawTags,
+  TrackRecord,
+} from "./types";
 
 // This file has no browser or app imports so it can be checked with plain Node.
 
@@ -10,6 +15,30 @@ const normalize = (value: string) => value.trim().toLowerCase();
 
 const compare = (a: string, b: string) =>
   a.localeCompare(b, undefined, { sensitivity: "base", numeric: true });
+
+/** "The Beatles" files under B, as on a record shop shelf. */
+const getSortName = (name: string) => name.replace(/^the\s+/i, "");
+
+/** The value that occurs most often, ignoring blanks. */
+const mostCommon = <TValue,>(values: (TValue | undefined)[]) => {
+  const counts = new Map<TValue, number>();
+  let best: TValue | undefined;
+
+  for (const value of values) {
+    if (value === undefined) {
+      continue;
+    }
+
+    const count = (counts.get(value) ?? 0) + 1;
+    counts.set(value, count);
+
+    if (best === undefined || count > (counts.get(best) ?? 0)) {
+      best = value;
+    }
+  }
+
+  return best;
+};
 
 export const getDirectory = (path: string) => {
   const index = path.lastIndexOf("/");
@@ -115,10 +144,99 @@ export const groupByAlbum = (records: TrackRecord[]) => {
   return groups;
 };
 
+const getPathSegments = (path: string) => path.split("/").filter(Boolean);
+
+/** Resolves "." and ".." so "Playlists/../Artist/Song.mp3" becomes "Artist/Song.mp3". */
+const resolveRelativePath = (directory: string, relativePath: string) => {
+  const segments = getPathSegments(directory);
+
+  for (const segment of getPathSegments(relativePath)) {
+    if (segment === "..") {
+      segments.pop();
+    } else if (segment !== ".") {
+      segments.push(segment);
+    }
+  }
+
+  return segments.join("/");
+};
+
+/**
+ * Works out which library songs a playlist file refers to.
+ *
+ * Players write these files in many ways: paths relative to the playlist, Windows
+ * backslashes, web-style %20 escapes, or the full path the music had on the
+ * computer that made the list. Each line is tried as written, and then by
+ * matching as much of the end of the path as possible.
+ */
+export const resolvePlaylist = (
+  playlist: PlaylistFile,
+  songPaths: string[]
+): string[] => {
+  const byLowerPath = new Map(
+    songPaths.map((path) => [path.toLowerCase(), path])
+  );
+  const directory = getDirectory(playlist.path);
+  const resolved: string[] = [];
+
+  for (const rawLine of playlist.text.split(/\r?\n/)) {
+    let line = rawLine.trim().replace(/^\uFEFF/, "");
+
+    if (!line || line.startsWith("#")) {
+      continue;
+    }
+
+    line = line.replace(/^file:\/\//i, "").replace(/\\/g, "/");
+
+    if (/%[0-9a-f]{2}/i.test(line)) {
+      try {
+        line = decodeURIComponent(line);
+      } catch {
+        // Not an escaped path after all; use it as written.
+      }
+    }
+
+    const isAbsolute = line.startsWith("/") || /^[a-z]:\//i.test(line);
+
+    const exact =
+      (!isAbsolute &&
+        byLowerPath.get(resolveRelativePath(directory, line).toLowerCase())) ||
+      byLowerPath.get(getPathSegments(line).join("/").toLowerCase());
+
+    if (exact) {
+      resolved.push(exact);
+      continue;
+    }
+
+    // Longest matching ending wins. A bare file name only counts if it is unique.
+    const segments = getPathSegments(line.toLowerCase());
+
+    for (let length = segments.length - 1; length >= 1; length--) {
+      const ending = segments.slice(-length).join("/");
+      const candidates = songPaths.filter((path) => {
+        const lower = path.toLowerCase();
+        return lower === ending || lower.endsWith(`/${ending}`);
+      });
+
+      if (candidates.length === 1 || (candidates.length > 1 && length > 1)) {
+        resolved.push(candidates[0]);
+        break;
+      }
+
+      if (candidates.length > 1) {
+        break;
+      }
+    }
+  }
+
+  return resolved;
+};
+
 /** Turns track records into the songs, albums and artists the views display. */
 export const buildIndex = (
   records: TrackRecord[],
-  artworkUrls: Record<string, string | undefined> = {}
+  artworkUrls: Record<string, string | undefined> = {},
+  playlistFiles: PlaylistFile[] = []
 ): LibraryIndex => {
   const albums: MediaApi.Album[] = [];
 
@@ -131,6 +249,8 @@ export const buildIndex = (
       artistName: getAlbumArtistName(group),
       url: id,
       artwork,
+      year: mostCommon(group.map((record) => record.year)),
+      genre: mostCommon(group.map((record) => record.genre)),
       songs: group.map((record) => ({
         id: record.path,
         url: record.path,
@@ -158,7 +278,6 @@ export const buildIndex = (
 
     if (artist) {
       artist.albums?.push(album);
-      artist.artwork ??= album.artwork;
     } else {
       artistsById.set(id, {
         id,
@@ -171,6 +290,36 @@ export const buildIndex = (
   }
 
   const artists = [...artistsById.values()].sort((a, b) =>
+    compare(getSortName(a.name), getSortName(b.name))
+  );
+
+  // Within an artist, albums run from earliest to latest, undated ones last.
+  for (const artist of artists) {
+    artist.albums?.sort(
+      (a, b) =>
+        (a.year ?? Infinity) - (b.year ?? Infinity) || compare(a.name, b.name)
+    );
+    artist.artwork = artist.albums?.find((album) => album.artwork)?.artwork;
+  }
+
+  const genresById = new Map<string, MediaApi.Genre>();
+
+  for (const album of albums) {
+    if (!album.genre) {
+      continue;
+    }
+
+    const id = `genre:${normalize(album.genre)}`;
+    const genre = genresById.get(id);
+
+    if (genre) {
+      genre.albums.push(album);
+    } else {
+      genresById.set(id, { id, name: album.genre, albums: [album] });
+    }
+  }
+
+  const genres = [...genresById.values()].sort((a, b) =>
     compare(a.name, b.name)
   );
 
@@ -178,11 +327,41 @@ export const buildIndex = (
     .flatMap((album) => album.songs)
     .sort((a, b) => compare(a.name, b.name));
 
+  const songsById = new Map(songs.map((song) => [song.id, song]));
+  const songPaths = [...songsById.keys()];
+
+  const playlists = playlistFiles
+    .map((file): MediaApi.Playlist => {
+      const playlistSongs = resolvePlaylist(file, songPaths)
+        .map((path) => songsById.get(path))
+        .filter((song): song is MediaApi.Song => !!song);
+      const fileName = file.path.slice(file.path.lastIndexOf("/") + 1);
+
+      return {
+        id: `playlist:${file.path}`,
+        name: fileName.replace(/\.[^.]+$/, ""),
+        url: file.path,
+        curatorName: "",
+        description: `${playlistSongs.length} ${
+          playlistSongs.length === 1 ? "song" : "songs"
+        }`,
+        artwork: playlistSongs.find((song) => song.artwork)?.artwork,
+        songs: playlistSongs,
+      };
+    })
+    .filter((playlist) => playlist.songs.length > 0)
+    .sort((a, b) => compare(a.name, b.name));
+
   return {
     songs,
     albums,
     artists,
-    songsById: new Map(songs.map((song) => [song.id, song])),
+    genres,
+    playlists,
+    playlistsById: new Map(
+      playlists.map((playlist) => [playlist.id, playlist])
+    ),
+    songsById,
     albumsById: new Map(albums.map((album) => [album.id, album])),
     artistsById,
     albumIdBySongId: new Map(
@@ -212,6 +391,8 @@ export const searchIndex = (
     songs: index.songs.filter((song) =>
       matches(term, song.name, song.artistName, song.albumName)
     ),
-    playlists: [],
+    playlists: index.playlists.filter((playlist) =>
+      matches(term, playlist.name)
+    ),
   };
 };

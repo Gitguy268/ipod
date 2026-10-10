@@ -21,6 +21,15 @@ declare namespace MediaApi {
     name: string;
     url: string;
     songs: Song[];
+    /** The year the album was released, when the files say. */
+    year?: number;
+    genre?: string;
+  }
+
+  interface Genre {
+    id: string;
+    name: string;
+    albums: Album[];
   }
 
   interface Artist {

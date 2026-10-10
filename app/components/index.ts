@@ -9,6 +9,7 @@ export { default as Controls } from "./Controls";
 export { default as DropTarget } from "./DropTarget";
 export { default as ErrorScreen } from "./ErrorScreen";
 export { default as FolderButton } from "./FolderButton";
+export { default as GelButton } from "./GelButton";
 export { default as Header } from "./Header";
 export { default as KenBurns } from "./KenBurns";
 export { default as LoadingIndicator } from "./LoadingIndicator";

@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -72,16 +73,26 @@ export const useAudioPlayer = (): AudioPlayerHook => {
   return state;
 };
 
-const shuffle = <TItem,>(items: TItem[]) => {
-  const result = [...items];
+interface QueueState {
+  /** The songs in the order they will play. */
+  songs: MediaApi.Song[];
+  /** Which of them is current, or -1 when nothing is queued. */
+  position: number;
+  /** Jumps to a song in the queue. */
+  skipTo: (position: number) => void;
+}
 
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
+/**
+ * The queue has its own context so that things showing it (an "up next" list)
+ * aren't redrawn every time the playback position ticks.
+ */
+export const QueueContext = createContext<QueueState>({
+  songs: [],
+  position: -1,
+  skipTo: () => {},
+});
 
-  return result;
-};
+export const useQueue = () => useContext(QueueContext);
 
 /** Every media type a queue can be started from boils down to a list of songs. */
 const getSongsFromQueueOptions = (queueOptions: MediaApi.QueueOptions) =>
@@ -111,6 +122,10 @@ export const AudioPlayerProvider = ({ children }: Props) => {
   const [volume, setVolume] = useState(0.5);
   const [nowPlayingItem, setNowPlayingItem] = useState<MediaApi.MediaItem>();
   const [playbackInfo, setPlaybackInfo] = useState(defaultPlaybackInfoState);
+  const [queue, setQueue] = useState<Pick<QueueState, "songs" | "position">>({
+    songs: [],
+    position: -1,
+  });
 
   const decksRef = useRef<AudioDecks | null>(null);
   /** The songs in the order they will play. */
@@ -133,6 +148,15 @@ export const AudioPlayerProvider = ({ children }: Props) => {
     shuffleModeRef.current = shuffleMode;
     repeatModeRef.current = repeatMode;
   });
+
+  /** Call after any change to the queue or the position in it. */
+  const commitQueue = useCallback(() => {
+    setQueue({ songs: queueRef.current, position: queueIndexRef.current });
+
+    if (queueIndexRef.current !== -1) {
+      saveQueue(queueRef.current, queueIndexRef.current);
+    }
+  }, []);
 
   const getDecks = useCallback(() => {
     decksRef.current ??= new AudioDecks();
@@ -219,6 +243,7 @@ export const AudioPlayerProvider = ({ children }: Props) => {
 
     setNowPlayingItem(undefined);
     setPlaybackInfo(defaultPlaybackInfoState);
+    setQueue({ songs: [], position: -1 });
     Utils.setDocumentSongTitle();
   }, [getDecks]);
 
@@ -250,7 +275,7 @@ export const AudioPlayerProvider = ({ children }: Props) => {
         isPaused: !autoplay,
         currentTime: startTime,
       });
-      saveQueue(queueRef.current, index);
+      commitQueue();
       saveTime(startTime);
 
       try {
@@ -310,7 +335,7 @@ export const AudioPlayerProvider = ({ children }: Props) => {
         }
       }
     },
-    [getDecks, getFile, preloadNext, reset]
+    [commitQueue, getDecks, getFile, preloadNext, reset]
   );
 
   const play = useCallback(
@@ -330,7 +355,7 @@ export const AudioPlayerProvider = ({ children }: Props) => {
       } else {
         // The chosen song still plays first, followed by the rest in random order.
         const rest = songs.filter((_, index) => index !== startPosition);
-        queueRef.current = [songs[startPosition], ...shuffle(rest)];
+        queueRef.current = [songs[startPosition], ...Utils.shuffle(rest)];
         await playAtIndex(0);
       }
     },
@@ -427,14 +452,14 @@ export const AudioPlayerProvider = ({ children }: Props) => {
         const rest = orderedQueueRef.current.filter(
           (song) => song !== currentSong
         );
-        queueRef.current = [currentSong, ...shuffle(rest)];
+        queueRef.current = [currentSong, ...Utils.shuffle(rest)];
         queueIndexRef.current = 0;
       }
 
-      saveQueue(queueRef.current, queueIndexRef.current);
+      commitQueue();
       preloadNext();
     },
-    [preloadNext, updateShuffleModeSetting]
+    [commitQueue, preloadNext, updateShuffleModeSetting]
   );
 
   const handleSetRepeatMode = useCallback(
@@ -461,10 +486,10 @@ export const AudioPlayerProvider = ({ children }: Props) => {
         ...queueRef.current.slice(insertAt),
       ];
       orderedQueueRef.current = [...orderedQueueRef.current, ...songs];
-      saveQueue(queueRef.current, queueIndexRef.current);
+      commitQueue();
       preloadNext();
     },
-    [play, preloadNext]
+    [commitQueue, play, preloadNext]
   );
 
   const playLater = useCallback(
@@ -476,10 +501,10 @@ export const AudioPlayerProvider = ({ children }: Props) => {
 
       queueRef.current = [...queueRef.current, ...songs];
       orderedQueueRef.current = [...orderedQueueRef.current, ...songs];
-      saveQueue(queueRef.current, queueIndexRef.current);
+      commitQueue();
       preloadNext();
     },
-    [play, preloadNext]
+    [commitQueue, play, preloadNext]
   );
 
   // The library hands out fresh song objects when it changes (for example once
@@ -495,6 +520,7 @@ export const AudioPlayerProvider = ({ children }: Props) => {
 
     if (current) {
       setNowPlayingItem(current);
+      setQueue({ songs: queueRef.current, position: queueIndexRef.current });
     }
   }, [index]);
 
@@ -667,6 +693,11 @@ export const AudioPlayerProvider = ({ children }: Props) => {
     handleChangeVolume(Number.isFinite(savedVolume) ? savedVolume : 0.5);
   }, [handleChangeVolume]);
 
+  const queueValue = useMemo(
+    () => ({ ...queue, skipTo: (position: number) => void playAtIndex(position) }),
+    [playAtIndex, queue]
+  );
+
   return (
     <AudioPlayerContext.Provider
       value={{
@@ -689,7 +720,7 @@ export const AudioPlayerProvider = ({ children }: Props) => {
         reset,
       }}
     >
-      {children}
+      <QueueContext.Provider value={queueValue}>{children}</QueueContext.Provider>
     </AudioPlayerContext.Provider>
   );
 };

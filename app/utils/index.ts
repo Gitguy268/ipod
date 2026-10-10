@@ -33,6 +33,18 @@ export const getMediaOptions = (
   },
 ];
 
+/** Returns a copy of the list in random order. */
+export const shuffle = <TItem>(items: TItem[]) => {
+  const result = [...items];
+
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+
+  return result;
+};
+
 export const formatPlaybackTime = (seconds: number) => {
   const dateObject = new Date();
   dateObject.setMinutes(0);

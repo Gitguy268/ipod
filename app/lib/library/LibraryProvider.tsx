@@ -39,6 +39,7 @@ import {
   LibraryEntry,
   LibraryIndex,
   LibraryStatus,
+  PlaylistFile,
   TrackRecord,
 } from "./types";
 
@@ -96,6 +97,19 @@ const EMPTY_INDEX = buildIndex([]);
  */
 const measure = (stage: string, start: number) =>
   performance.measure(`library:${stage}`, { start, end: performance.now() });
+
+/** Playlist files are small text files, so they are simply read again on every load. */
+const readPlaylistFiles = (entries: LibraryEntry[]) =>
+  Promise.all(
+    entries.map(async (entry): Promise<PlaylistFile> => {
+      try {
+        return { path: entry.path, text: await (await entry.getFile()).text() };
+      } catch (error) {
+        console.warn(`Unable to read playlist: ${entry.path}`, error);
+        return { path: entry.path, text: "" };
+      }
+    })
+  );
 
 /** A cover image next to the track, or beside its "CD1"-style disc folder. */
 const findCover = (covers: Map<string, LibraryEntry>, trackPath: string) =>
@@ -176,7 +190,7 @@ export const LibraryProvider = ({ children }: Props) => {
       setStatus("scanning");
       setFolderName(name);
 
-      const { audio, coversByDirectory, unplayableCount } =
+      const { audio, coversByDirectory, playlists, unplayableCount } =
         classifyEntries(entries);
 
       const reportProgress = throttle((progress: Progress) => {
@@ -273,9 +287,11 @@ export const LibraryProvider = ({ children }: Props) => {
         }
       }
 
+      const playlistFiles = await readPlaylistFiles(playlists);
+
       const publish = () => {
         if (isCurrent()) {
-          setIndex(buildIndex(records, artworkUrls));
+          setIndex(buildIndex(records, artworkUrls, playlistFiles));
         }
       };
 
@@ -524,6 +540,10 @@ export const LibraryProvider = ({ children }: Props) => {
     queueBridge.resolveSongs = (type, id) => {
       if (type === "album") {
         return index.albumsById.get(id)?.songs ?? [];
+      }
+
+      if (type === "playlist") {
+        return index.playlistsById.get(id)?.songs ?? [];
       }
 
       const song = index.songsById.get(id);

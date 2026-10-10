@@ -23,7 +23,7 @@ const ArtistViewComponent = ({ id }: Props) => {
           type: "view",
           headerTitle: album.name,
           label: album.name,
-          sublabel: album.artistName,
+          sublabel: album.year ? `${album.year}` : undefined,
           imageUrl: Utils.getArtwork(100, album.artwork?.url),
           viewId: "album",
           props: { id: album.id ?? "" },

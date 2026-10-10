@@ -259,9 +259,15 @@ export const isAudioPath = (path: string) => getExtension(path) in AUDIO_TYPES;
 const isUnsupportedAudioPath = (path: string) =>
   UNSUPPORTED_AUDIO.has(getExtension(path));
 
-/** Whether a file is worth listing at all: music (playable or not) or a cover image. */
+const isPlaylistPath = (path: string) =>
+  ["m3u", "m3u8"].includes(getExtension(path));
+
+/** Whether a file is worth listing at all: music (playable or not), a cover image or a playlist. */
 const isRelevantPath = (path: string) =>
-  isAudioPath(path) || isCoverPath(path) || isUnsupportedAudioPath(path);
+  isAudioPath(path) ||
+  isCoverPath(path) ||
+  isUnsupportedAudioPath(path) ||
+  isPlaylistPath(path);
 
 /**
  * Apple Lossless lives in ordinary .m4a files, so it can only be recognised once
@@ -274,8 +280,8 @@ export const canPlayCodec = (codec?: string) =>
     "";
 
 /**
- * Splits a folder listing into playable audio files and one cover image per folder,
- * and counts the music files this browser has no way of playing.
+ * Splits a folder listing into playable audio files, playlists and one cover image
+ * per folder, and counts the music files this browser has no way of playing.
  */
 export const classifyEntries = (entries: LibraryEntry[]) => {
   const probe = document.createElement("audio");
@@ -293,6 +299,7 @@ export const classifyEntries = (entries: LibraryEntry[]) => {
 
   const audio: LibraryEntry[] = [];
   const coversByDirectory = new Map<string, LibraryEntry>();
+  const playlists: LibraryEntry[] = [];
   let unplayableCount = 0;
 
   for (const entry of entries) {
@@ -306,6 +313,8 @@ export const classifyEntries = (entries: LibraryEntry[]) => {
       if (!coversByDirectory.has(directory)) {
         coversByDirectory.set(directory, entry);
       }
+    } else if (isPlaylistPath(entry.path)) {
+      playlists.push(entry);
     } else if (isAudioPath(entry.path) && canPlay(entry.path)) {
       audio.push(entry);
     } else if (isAudioPath(entry.path) || isUnsupportedAudioPath(entry.path)) {
@@ -313,5 +322,5 @@ export const classifyEntries = (entries: LibraryEntry[]) => {
     }
   }
 
-  return { audio, coversByDirectory, unplayableCount };
+  return { audio, coversByDirectory, playlists, unplayableCount };
 };

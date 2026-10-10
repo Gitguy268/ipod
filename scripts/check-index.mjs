@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 
 import {
   buildIndex,
+  resolvePlaylist,
   searchIndex,
   toTrackRecord,
 } from "../app/lib/library/buildIndex.ts";
@@ -86,5 +87,74 @@ const results = searchIndex(index, "  LIGHT ");
 assert.deepEqual(results.albums.map((a) => a.name), ["Northern Lights"]);
 assert.deepEqual(results.songs.map((s) => s.name).sort(), ["First Light", "Green Ribbon"]);
 assert.deepEqual(searchIndex(index, "").songs, []);
+
+// Artists: a leading "The" is ignored when sorting; albums run oldest first.
+const dated = buildIndex([
+  toTrackRecord(file("z/1.mp3"), { title: "a", artist: "Zebra", album: "Stripes", year: 1999, genre: "Rock" }, ROOT),
+  toTrackRecord(file("b/1.mp3"), { title: "b", artist: "The Beatles", album: "Late One", year: 1969, genre: "Rock" }, ROOT),
+  toTrackRecord(file("b/2.mp3"), { title: "c", artist: "The Beatles", album: "Early One", year: 1963, genre: "Pop" }, ROOT),
+  toTrackRecord(file("b/3.mp3"), { title: "d", artist: "The Beatles", album: "Undated" }, ROOT),
+  toTrackRecord(file("c/1.mp3"), { title: "e", artist: "Coltrane", album: "Blue", year: 1957, genre: "Jazz" }, ROOT),
+  toTrackRecord(file("c/2.mp3"), { title: "f", artist: "Coltrane", album: "Blue", year: 1957, genre: "jazz" }, ROOT),
+  toTrackRecord(file("c/3.mp3"), { title: "g", artist: "Coltrane", album: "Blue", year: 1958, genre: "Bop" }, ROOT),
+]);
+assert.deepEqual(dated.artists.map((a) => a.name), ["The Beatles", "Coltrane", "Zebra"]);
+assert.deepEqual(
+  dated.artistsById.get("artist:the beatles").albums.map((a) => a.name),
+  ["Early One", "Late One", "Undated"]
+);
+
+// Albums take the year and genre most of their tracks agree on.
+const blue = dated.albums.find((a) => a.name === "Blue");
+assert.equal(blue.year, 1957);
+assert.equal(blue.genre, "Jazz");
+assert.deepEqual(dated.genres.map((g) => `${g.name}:${g.albums.length}`), ["Jazz:1", "Pop:1", "Rock:2"]);
+
+// Playlists: the many ways a line can point at a song.
+const songPaths = [
+  "Aurora Lane/Long Way Round/CD1/01 Departure.mp3",
+  "Mesa Verde/Dust and Echo/01 Arroyo.m4a",
+  "Compilations/Summer Mix/02 Heatwave.mp3",
+  "Low Tide Club/Harbour Songs/03 Ebb.flac",
+  "X/Greatest Hits/01.mp3",
+  "Y/Greatest Hits/01.mp3",
+];
+assert.deepEqual(
+  resolvePlaylist(
+    {
+      path: "Playlists/Road Trip.m3u",
+      text: [
+        "\uFEFF#EXTM3U",
+        "#EXTINF:8,Aurora Lane - Departure",
+        "../Aurora Lane/Long Way Round/CD1/01 Departure.mp3", // relative to the playlist
+        "..\\Mesa Verde\\Dust and Echo\\01 Arroyo.m4a", // Windows separators
+        "C:\\Users\\someone\\Music\\Compilations\\Summer Mix\\02 HEATWAVE.mp3", // absolute, other case
+        "file:///Volumes/Music/Low%20Tide%20Club/Harbour%20Songs/03%20Ebb.flac", // escaped URL
+        "Y/Greatest Hits/01.mp3", // relative to the music folder
+        "01.mp3", // ambiguous: two songs have this name
+        "../Missing/Not Here.mp3",
+        "",
+      ].join("\r\n"),
+    },
+    songPaths
+  ),
+  [
+    "Aurora Lane/Long Way Round/CD1/01 Departure.mp3",
+    "Mesa Verde/Dust and Echo/01 Arroyo.m4a",
+    "Compilations/Summer Mix/02 Heatwave.mp3",
+    "Low Tide Club/Harbour Songs/03 Ebb.flac",
+    "Y/Greatest Hits/01.mp3",
+  ]
+);
+
+// Playlists in the index: named after the file, and dropped if nothing matched.
+const withPlaylists = buildIndex(records, {}, [
+  { path: "Lists/Mix Tape.m3u8", text: "../Comp/Summer/02.mp3\n../A/Northern/01 a.mp3\n" },
+  { path: "Lists/Empty.m3u", text: "nothing/here.mp3\n" },
+]);
+assert.deepEqual(withPlaylists.playlists.map((p) => p.name), ["Mix Tape"]);
+assert.deepEqual(withPlaylists.playlists[0].songs.map((s) => s.name), ["Heatwave", "First Light"]);
+assert.equal(withPlaylists.playlists[0].description, "2 songs");
+assert.deepEqual(searchIndex(withPlaylists, "tape").playlists.map((p) => p.name), ["Mix Tape"]);
 
 console.log("index checks passed");

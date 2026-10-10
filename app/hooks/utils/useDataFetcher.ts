@@ -77,8 +77,8 @@ const useLocalDataFetcher = (): DataFetcher => {
       fetchSongs: async (params) => paginate(index.songs, params),
       fetchArtists: async (params) => paginate(index.artists, params),
       fetchArtistAlbums: async (id) => index.artistsById.get(id)?.albums ?? [],
-      fetchPlaylists: async () => ({ data: [] }),
-      fetchPlaylist: async () => undefined,
+      fetchPlaylists: async (params) => paginate(index.playlists, params),
+      fetchPlaylist: async (id) => index.playlistsById.get(id),
       fetchSearchResults: async (query) => searchIndex(index, query),
     };
   }, [index]);

@@ -6,6 +6,7 @@ import { ArtistsView } from "./ArtistsView";
 import { BrickGameView } from "./BrickGameView";
 import { CoverFlowView } from "./CoverFlowView";
 import { GamesView } from "./GamesView";
+import { GenresView } from "./GenresView";
 import { HomeView } from "./HomeView";
 import { MusicView } from "./MusicView";
 import { NowPlayingView } from "./NowPlayingView";
@@ -27,6 +28,7 @@ export const VIEW_REGISTRY = {
   albums: AlbumsView.viewConfig,
   album: AlbumView.viewConfig,
   songs: SongsView.viewConfig,
+  genres: GenresView.viewConfig,
   nowPlaying: NowPlayingView.viewConfig,
   playlists: PlaylistsView.viewConfig,
   playlist: PlaylistView.viewConfig,

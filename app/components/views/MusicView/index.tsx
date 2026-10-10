@@ -1,13 +1,18 @@
 import { useMemo } from "react";
 
 import { defineView } from "@/components/views/defineView";
-import { SelectableListOption } from "@/components/SelectableList";
+import {
+  getConditionalOption,
+  SelectableListOption,
+} from "@/components/SelectableList";
 import SelectableListView from "@/components/SelectableListView";
 import { SplitScreenPreview } from "@/components/previews";
 import { useAudioPlayer } from "@/hooks";
+import { useLibrary } from "@/lib/library";
 
 const MusicViewComponent = () => {
   const { nowPlayingItem } = useAudioPlayer();
+  const { index } = useLibrary();
 
   const options: SelectableListOption[] = useMemo(() => {
     const arr: SelectableListOption[] = [
@@ -17,6 +22,12 @@ const MusicViewComponent = () => {
         viewId: "coverFlow",
         preview: SplitScreenPreview.Music,
       },
+      ...getConditionalOption(index.playlists.length > 0, {
+        type: "view",
+        label: "Playlists",
+        viewId: "playlists",
+        preview: SplitScreenPreview.Music,
+      }),
       {
         type: "view",
         label: "Artists",
@@ -29,6 +40,12 @@ const MusicViewComponent = () => {
         viewId: "albums",
         preview: SplitScreenPreview.Music,
       },
+      ...getConditionalOption(index.genres.length > 0, {
+        type: "view",
+        label: "Genres",
+        viewId: "genres",
+        preview: SplitScreenPreview.Music,
+      }),
       {
         type: "view",
         label: "Songs",
@@ -53,7 +70,7 @@ const MusicViewComponent = () => {
     }
 
     return arr;
-  }, [nowPlayingItem]);
+  }, [index, nowPlayingItem]);
 
   return <SelectableListView viewId="music" options={options} />;
 };
