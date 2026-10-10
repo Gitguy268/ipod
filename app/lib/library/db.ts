@@ -1,5 +1,14 @@
 const DB_NAME = "ipodLocalLibrary";
-const DB_VERSION = 1;
+
+/**
+ * Raise this whenever the shape of a cached track or artwork record changes.
+ * The cached tags and thumbnails are thrown away and read again from the files;
+ * the remembered folder is kept.
+ */
+const DB_VERSION = 2;
+
+/** Stores that only hold data which can be rebuilt from the music files. */
+const REBUILDABLE_STORES: StoreName[] = ["tracks", "artwork"];
 
 /** `settings` holds the folder handle, `tracks` the parsed tags, `artwork` the album thumbnails. */
 export type StoreName = "settings" | "tracks" | "artwork";
@@ -17,8 +26,18 @@ const openDb = () => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onupgradeneeded = () => {
+      const db = request.result;
+
+      for (const name of REBUILDABLE_STORES) {
+        if (db.objectStoreNames.contains(name)) {
+          db.deleteObjectStore(name);
+        }
+      }
+
       for (const [name, keyPath] of Object.entries(KEY_PATHS)) {
-        request.result.createObjectStore(name, keyPath ? { keyPath } : undefined);
+        if (!db.objectStoreNames.contains(name)) {
+          db.createObjectStore(name, keyPath ? { keyPath } : undefined);
+        }
       }
     };
     request.onsuccess = () => resolve(request.result);

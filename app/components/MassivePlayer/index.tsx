@@ -157,11 +157,11 @@ const Volume = styled.div`
   gap: ${Unit.XS};
   width: 180px;
   margin-left: auto;
+`;
 
-  img {
-    height: 12px;
-    filter: brightness(1.4);
-  }
+const VolumeIcon = styled.img`
+  height: 12px;
+  filter: brightness(1.4);
 `;
 
 // Album grid
@@ -209,21 +209,21 @@ const AlbumButton = styled.button`
   content-visibility: auto;
   contain-intrinsic-size: auto 200px;
 
-  img {
-    display: block;
-    width: 100%;
-    aspect-ratio: 1;
-    object-fit: cover;
-    border: 1px solid #2a2a2a;
-  }
-
-  &:hover img {
-    border-color: #8a8a8a;
-  }
-
   &:focus-visible {
     outline: 2px solid #2dd7ff;
     outline-offset: 4px;
+  }
+`;
+
+const AlbumCover = styled.img`
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border: 1px solid #2a2a2a;
+
+  ${AlbumButton}:hover & {
+    border-color: #8a8a8a;
   }
 `;
 
@@ -397,14 +397,14 @@ const MassivePlayer = () => {
                 <FastForwardIcon color="white" />
               </TransportButton>
               <Volume>
-                <img src={`${APP_URL}/volume_mute.svg`} alt="" />
+                <VolumeIcon src={`${APP_URL}/volume_mute.svg`} alt="" />
                 <GelBar
                   percent={volume * 100}
                   height={8}
                   label="Volume"
                   onChange={(value) => setVolume(value / 100)}
                 />
-                <img src={`${APP_URL}/volume_full.svg`} alt="" />
+                <VolumeIcon src={`${APP_URL}/volume_full.svg`} alt="" />
               </Volume>
             </Transport>
           </Details>
@@ -439,7 +439,7 @@ const MassivePlayer = () => {
                 setIsBrowsing(false);
               }}
             >
-              <img
+              <AlbumCover
                 src={Utils.getArtwork(300, album.artwork?.url)}
                 alt=""
                 loading="lazy"

@@ -4,7 +4,7 @@ import { SelectableListOption } from "@/components/SelectableList";
 import { useLibrary } from "@/lib/library";
 
 /** Returns the options for loading a music folder, or null once a library is loaded. */
-const useSignInOptions = (): SelectableListOption[] | null => {
+const useFolderOptions = (): SelectableListOption[] | null => {
   const { status, chooseFolder, reconnect } = useLibrary();
 
   return useMemo(() => {
@@ -36,4 +36,4 @@ const useSignInOptions = (): SelectableListOption[] | null => {
   }, [status, chooseFolder, reconnect]);
 };
 
-export default useSignInOptions;
+export default useFolderOptions;

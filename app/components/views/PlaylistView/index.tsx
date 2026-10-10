@@ -9,14 +9,11 @@ import { useFetchPlaylist } from "@/hooks/utils/useDataFetcher";
 
 interface Props {
   id: string;
-  /** Unused: everything comes from the local music folder. */
-  inLibrary?: boolean;
 }
 
-const _PlaylistView = ({ id, inLibrary = false }: Props) => {
+const PlaylistViewComponent = ({ id }: Props) => {
   const { data: playlist, isLoading } = useFetchPlaylist({
     id,
-    inLibrary,
   });
 
   const options: SelectableListOption[] = useMemo(
@@ -46,9 +43,9 @@ const _PlaylistView = ({ id, inLibrary = false }: Props) => {
   );
 };
 
-export const PlaylistView = Object.assign(_PlaylistView, {
+export const PlaylistView = Object.assign(PlaylistViewComponent, {
   viewConfig: defineView({
-    component: _PlaylistView,
+    component: PlaylistViewComponent,
     type: "full",
     title: "Playlist",
     preview: SplitScreenPreview.Music,

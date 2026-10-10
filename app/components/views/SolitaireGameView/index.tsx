@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { SplitScreenPreview } from "@/components/previews";
 import { defineView } from "@/components/views/defineView";
@@ -20,7 +20,7 @@ const Canvas = styled.canvas`
   object-fit: fill;
 `;
 
-const _SolitaireGame = () => {
+const SolitaireGameComponent = () => {
   const { hideView } = useViewContext();
   const gameRef = useRef<Game | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -107,9 +107,9 @@ const _SolitaireGame = () => {
   );
 };
 
-export const SolitaireGameView = Object.assign(_SolitaireGame, {
+export const SolitaireGameView = Object.assign(SolitaireGameComponent, {
   viewConfig: defineView({
-    component: _SolitaireGame,
+    component: SolitaireGameComponent,
     type: "full",
     title: "Solitaire",
     preview: SplitScreenPreview.Games,

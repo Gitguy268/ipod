@@ -49,7 +49,7 @@ interface Props {
 }
 
 /** Shown wherever music would be, until a music folder has been loaded. */
-const AuthPrompt = ({ message }: Props) => {
+const FolderPrompt = ({ message }: Props) => {
   const { status, progress, error } = useLibrary();
 
   const isScanning = status === "scanning";
@@ -87,4 +87,4 @@ const AuthPrompt = ({ message }: Props) => {
   );
 };
 
-export default AuthPrompt;
+export default FolderPrompt;

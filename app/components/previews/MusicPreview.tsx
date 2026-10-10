@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { AuthPrompt, KenBurns, LoadingScreen } from "@/components";
+import { FolderPrompt, KenBurns, LoadingScreen } from "@/components";
 import { motion } from "motion/react";
 import { useSettings } from "@/hooks";
 import styled from "styled-components";
@@ -24,9 +24,7 @@ const MusicPreview = () => {
     data: albums,
     isLoading,
     error,
-  } = useFetchAlbums({
-    artworkSize: 400,
-  });
+  } = useFetchAlbums({});
 
   const artworkUrls = useMemo(() => {
     if (albums && !error) {
@@ -44,7 +42,7 @@ const MusicPreview = () => {
   return (
     <Container {...previewSlideRight}>
       {!isAuthorized ? (
-        <AuthPrompt />
+        <FolderPrompt />
       ) : isLoading && !albums ? (
         <LoadingScreen backgroundColor="linear-gradient(180deg, #B1B5C0 0%, #686E7A 100%)" />
       ) : (

@@ -9,7 +9,7 @@ import {
   DisplayMode,
   useAudioPlayer,
   useSettings,
-  useSignInOptions,
+  useFolderOptions,
   useViewContext,
 } from "@/hooks";
 import { supportsDirectoryPicker, useLibrary } from "@/lib/library";
@@ -30,7 +30,7 @@ const getThemeLabel = (theme: (typeof THEMES)[number]) => {
   return theme.charAt(0).toUpperCase() + theme.slice(1);
 };
 
-const _SettingsView = () => {
+const SettingsViewComponent = () => {
   const {
     isAuthorized,
     deviceTheme,
@@ -44,7 +44,7 @@ const _SettingsView = () => {
   } = useSettings();
   const { setShuffleMode, setRepeatMode } = useAudioPlayer();
   const { chooseFolder, rescan, forget } = useLibrary();
-  const signInOptions = useSignInOptions();
+  const chooseFolderOptions = useFolderOptions();
   const { reset } = useAudioPlayer();
   const { showPopup } = useViewContext();
 
@@ -198,7 +198,7 @@ const _SettingsView = () => {
         ],
         preview: SplitScreenPreview.Settings,
       },
-      ...(signInOptions ?? []).map(
+      ...(chooseFolderOptions ?? []).map(
         (option): SelectableListOption => ({
           ...option,
           preview: SplitScreenPreview.Music,
@@ -210,7 +210,7 @@ const _SettingsView = () => {
       displayModeOptions,
       folderOptions,
       themeOptions,
-      signInOptions,
+      chooseFolderOptions,
       shuffleMode,
       setShuffleMode,
       repeatMode,
@@ -223,9 +223,9 @@ const _SettingsView = () => {
   return <SelectableListView viewId="settings" options={options} />;
 };
 
-export const SettingsView = Object.assign(_SettingsView, {
+export const SettingsView = Object.assign(SettingsViewComponent, {
   viewConfig: defineView({
-    component: _SettingsView,
+    component: SettingsViewComponent,
     type: "split",
     title: "Settings",
     isSplitScreen: true,

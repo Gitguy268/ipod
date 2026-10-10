@@ -10,7 +10,7 @@ interface Props {
   songs: MediaApi.Song[];
 }
 
-const _SongsView = ({ songs }: Props) => {
+const SongsViewComponent = ({ songs }: Props) => {
   const options: SelectableListOption[] = useMemo(
     () =>
       songs.map((song) => ({
@@ -37,9 +37,9 @@ const _SongsView = ({ songs }: Props) => {
   );
 };
 
-export const SongsView = Object.assign(_SongsView, {
+export const SongsView = Object.assign(SongsViewComponent, {
   viewConfig: defineView({
-    component: _SongsView,
+    component: SongsViewComponent,
     type: "full",
     title: "Songs",
     preview: SplitScreenPreview.Music,

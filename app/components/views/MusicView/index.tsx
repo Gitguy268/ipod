@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 
 import { defineView } from "@/components/views/defineView";
 import { SelectableListOption } from "@/components/SelectableList";
@@ -7,7 +7,7 @@ import { SplitScreenPreview } from "@/components/previews";
 import { useAudioPlayer } from "@/hooks";
 import { useLibrary } from "@/lib/library";
 
-const _MusicView = () => {
+const MusicViewComponent = () => {
   const { index } = useLibrary();
   const { nowPlayingItem } = useAudioPlayer();
 
@@ -61,9 +61,9 @@ const _MusicView = () => {
   return <SelectableListView viewId="music" options={options} />;
 };
 
-export const MusicView = Object.assign(_MusicView, {
+export const MusicView = Object.assign(MusicViewComponent, {
   viewConfig: defineView({
-    component: _MusicView,
+    component: MusicViewComponent,
     type: "split",
     title: "Music",
     isSplitScreen: true,

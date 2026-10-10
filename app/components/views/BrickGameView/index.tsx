@@ -26,7 +26,7 @@ const Canvas = styled.canvas`
   object-fit: fill;
 `;
 
-const _BrickGame = () => {
+const BrickGameComponent = () => {
   useMenuHideView("brickGame");
   const { hideView } = useViewContext();
   const gameRef = useRef<Game | null>(null);
@@ -86,9 +86,9 @@ const _BrickGame = () => {
   );
 };
 
-export const BrickGameView = Object.assign(_BrickGame, {
+export const BrickGameView = Object.assign(BrickGameComponent, {
   viewConfig: defineView({
-    component: _BrickGame,
+    component: BrickGameComponent,
     type: "full",
     title: "Brick",
     preview: SplitScreenPreview.Games,

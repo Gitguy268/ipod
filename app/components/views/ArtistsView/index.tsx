@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 
-import AuthPrompt from "@/components/AuthPrompt";
+import FolderPrompt from "@/components/FolderPrompt";
 import { SelectableListOption } from "@/components/SelectableList";
 import SelectableListView from "@/components/SelectableListView";
 import { SplitScreenPreview } from "@/components/previews";
@@ -11,16 +11,14 @@ import { useFetchArtists } from "@/hooks/utils/useDataFetcher";
 
 interface Props {
   artists?: MediaApi.Artist[];
-  inLibrary?: boolean;
   showImages?: boolean;
 }
 
-const _ArtistsView = ({
+const ArtistsViewComponent = ({
   artists,
-  inLibrary = true,
   showImages = false,
 }: Props) => {
-  const { isAuthorized, isOffline } = useSettings();
+  const { isAuthorized } = useSettings();
   const {
     data: fetchedArtists,
     fetchNextPage,
@@ -44,11 +42,11 @@ const _ArtistsView = ({
           imageUrl: showImages
             ? (Utils.getArtwork(50, artist.artwork?.url) ?? "artists_icon.svg")
             : "",
-          props: { id: artist.id, inLibrary },
+          props: { id: artist.id },
         })
       ) ?? []
     );
-  }, [artists, fetchedArtists, inLibrary, showImages]);
+  }, [artists, fetchedArtists, showImages]);
 
   const isLoading = !options.length && isQueryLoading;
 
@@ -61,23 +59,23 @@ const _ArtistsView = ({
   return (
     <SelectableListView
       viewId="artists"
-      options={!isAuthorized || isOffline ? [] : options}
-      loading={isAuthorized && !isOffline && isLoading}
+      options={!isAuthorized ? [] : options}
+      loading={isAuthorized && isLoading}
       loadingNextItems={isFetchingNextPage}
       onNearEndOfList={handleNearEndOfList}
       emptyMessage="No artists"
       emptyContent={
-        !isAuthorized || isOffline
-          ? <AuthPrompt />
+        !isAuthorized
+          ? <FolderPrompt />
           : undefined
       }
     />
   );
 };
 
-export const ArtistsView = Object.assign(_ArtistsView, {
+export const ArtistsView = Object.assign(ArtistsViewComponent, {
   viewConfig: defineView({
-    component: _ArtistsView,
+    component: ArtistsViewComponent,
     type: "full",
     title: "Artists",
     preview: SplitScreenPreview.Music,

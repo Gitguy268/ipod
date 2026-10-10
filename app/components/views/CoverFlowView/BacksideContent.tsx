@@ -60,7 +60,6 @@ const BacksideContent = ({ albumId, setPlayingAlbum }: Props) => {
 
   const { data: album, isLoading } = useFetchAlbum({
     id: albumId,
-    inLibrary: true,
   });
 
   const options: SelectableListOption[] = useMemo(

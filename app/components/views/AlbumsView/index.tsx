@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 
-import AuthPrompt from "@/components/AuthPrompt";
+import FolderPrompt from "@/components/FolderPrompt";
 import { SelectableListOption } from "@/components/SelectableList";
 import SelectableListView from "@/components/SelectableListView";
 import { SplitScreenPreview } from "@/components/previews";
@@ -11,11 +11,10 @@ import { useFetchAlbums } from "@/hooks/utils/useDataFetcher";
 
 interface Props {
   albums?: MediaApi.Album[];
-  inLibrary?: boolean;
 }
 
-const _AlbumsView = ({ albums, inLibrary = true }: Props) => {
-  const { isAuthorized, isOffline } = useSettings();
+const AlbumsViewComponent = ({ albums }: Props) => {
+  const { isAuthorized } = useSettings();
 
   const {
     data: fetchedAlbums,
@@ -39,11 +38,11 @@ const _AlbumsView = ({ albums, inLibrary = true }: Props) => {
           sublabel: album.artistName,
           imageUrl: Utils.getArtwork(100, album.artwork?.url),
           viewId: "album",
-          props: { id: album.id ?? "", inLibrary },
+          props: { id: album.id ?? "" },
         })
       ) ?? []
     );
-  }, [albums, fetchedAlbums, inLibrary]);
+  }, [albums, fetchedAlbums]);
 
   const handleNearEndOfList = useCallback(() => {
     if (!isFetchingNextPage) {
@@ -54,21 +53,21 @@ const _AlbumsView = ({ albums, inLibrary = true }: Props) => {
   return (
     <SelectableListView
       viewId="albums"
-      options={!isAuthorized || isOffline ? [] : options}
-      loading={isAuthorized && !isOffline && isLoading}
+      options={!isAuthorized ? [] : options}
+      loading={isAuthorized && isLoading}
       loadingNextItems={isFetchingNextPage}
       onNearEndOfList={handleNearEndOfList}
       emptyMessage="No albums"
       emptyContent={
-        !isAuthorized || isOffline ? <AuthPrompt /> : undefined
+        !isAuthorized ? <FolderPrompt /> : undefined
       }
     />
   );
 };
 
-export const AlbumsView = Object.assign(_AlbumsView, {
+export const AlbumsView = Object.assign(AlbumsViewComponent, {
   viewConfig: defineView({
-    component: _AlbumsView,
+    component: AlbumsViewComponent,
     type: "full",
     title: "Albums",
     preview: SplitScreenPreview.Music,

@@ -5,34 +5,24 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useLibrary } from "@/lib/library";
 import { searchIndex } from "@/lib/library/buildIndex";
 
-interface UserLibraryProps {
-  inLibrary?: boolean;
-  userId?: string;
-}
-
 interface CommonFetcherProps {
   /** Data will not be fetched until the `fetch` function is called. */
   lazy?: boolean;
 }
 
-interface PlaylistFetcherProps extends UserLibraryProps {
+interface PlaylistFetcherProps {
   id: string;
 }
 
-interface AlbumFetcherProps extends UserLibraryProps {
+interface AlbumFetcherProps {
   id: string;
 }
 
-interface AlbumsFetcherProps {
-  artworkSize?: number;
-}
-
-interface ArtistFetcherProps extends UserLibraryProps {
+interface ArtistFetcherProps {
   id: string;
-  artworkSize?: number;
 }
 
-interface SearchFetcherProps extends UserLibraryProps {
+interface SearchFetcherProps {
   query: string;
 }
 
@@ -46,24 +36,15 @@ export interface DataFetcher {
   fetchAlbums: (
     params: MediaApi.PaginationParams
   ) => Promise<MediaApi.PaginatedResponse<MediaApi.Album[]> | undefined>;
-  fetchAlbum: (
-    id: string,
-    inLibrary?: boolean
-  ) => Promise<MediaApi.Album | undefined>;
+  fetchAlbum: (id: string) => Promise<MediaApi.Album | undefined>;
   fetchArtists: (
     params: MediaApi.PaginationParams
   ) => Promise<MediaApi.PaginatedResponse<MediaApi.Artist[]> | undefined>;
-  fetchArtistAlbums: (
-    id: string,
-    inLibrary?: boolean
-  ) => Promise<MediaApi.Album[] | undefined>;
+  fetchArtistAlbums: (id: string) => Promise<MediaApi.Album[] | undefined>;
   fetchPlaylists: (
     params: MediaApi.PaginationParams
   ) => Promise<MediaApi.PaginatedResponse<MediaApi.Playlist[]> | undefined>;
-  fetchPlaylist: (
-    id: string,
-    inLibrary?: boolean
-  ) => Promise<MediaApi.Playlist | undefined>;
+  fetchPlaylist: (id: string) => Promise<MediaApi.Playlist | undefined>;
   fetchSearchResults: (
     query: string
   ) => Promise<MediaApi.SearchResults | undefined>;
@@ -118,14 +99,14 @@ export const useFetchAlbum = (
 
   return useQuery({
     queryKey: [service, "album", { id: options.id }],
-    queryFn: () => fetcher.fetchAlbum(options.id, options.inLibrary),
+    queryFn: () => fetcher.fetchAlbum(options.id),
     staleTime: STALE_TIME.detail,
     enabled: enabled && !options.lazy,
   });
 };
 
 export const useFetchAlbums = (
-  options: CommonFetcherProps & AlbumsFetcherProps
+  options: CommonFetcherProps
 ) => {
   const { fetcher, service, enabled } = useResolvedFetcher();
 
@@ -161,7 +142,7 @@ export const useFetchArtistAlbums = (
 
   return useQuery({
     queryKey: [service, "artistAlbums", { id: options.id }],
-    queryFn: () => fetcher.fetchArtistAlbums(options.id, options.inLibrary),
+    queryFn: () => fetcher.fetchArtistAlbums(options.id),
     staleTime: STALE_TIME.detail,
     enabled: enabled && !options.lazy,
   });
@@ -188,7 +169,7 @@ export const useFetchPlaylist = (
 
   return useQuery({
     queryKey: [service, "playlist", { id: options.id }],
-    queryFn: () => fetcher.fetchPlaylist(options.id, options.inLibrary),
+    queryFn: () => fetcher.fetchPlaylist(options.id),
     staleTime: STALE_TIME.detail,
     enabled: enabled && !options.lazy,
   });

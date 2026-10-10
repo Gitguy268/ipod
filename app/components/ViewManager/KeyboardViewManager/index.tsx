@@ -16,8 +16,6 @@ interface Props {
 }
 
 const KeyboardViewManager = ({ viewStack }: Props) => {
-  const isHidden = viewStack.length === 0;
-
   return (
     <RootContainer data-stack-type="keyboard">
       <AnimatePresence>

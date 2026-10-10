@@ -1,8 +1,8 @@
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { defineView } from "@/components/views/defineView";
 import { SplitScreenPreview } from "@/components/previews";
-import AuthPrompt from "@/components/AuthPrompt";
+import FolderPrompt from "@/components/FolderPrompt";
 import { getConditionalOption } from "@/components/SelectableList";
 import { SelectableListOption } from "@/components/SelectableList";
 import SelectableListView from "@/components/SelectableListView";
@@ -15,7 +15,7 @@ import { useFetchSearchResults } from "@/hooks/utils/useDataFetcher";
 import { APP_URL } from "@/utils/constants/api";
 import { pluralize } from "@/utils/strings";
 
-const _SearchView = () => {
+const SearchViewComponent = () => {
   const { isAuthorized } = useSettings();
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -59,7 +59,7 @@ const _SearchView = () => {
         type: "view",
         label: "Artists",
         viewId: "artists",
-        props: { artists, inLibrary: false, showImages: true },
+        props: { artists, showImages: true },
         imageUrl: `${APP_URL}/artists_icon.svg`,
         sublabel: `${artists?.length} ${pluralize(
           "artist",
@@ -71,7 +71,7 @@ const _SearchView = () => {
         type: "view",
         label: "Albums",
         viewId: "albums",
-        props: { albums, inLibrary: false },
+        props: { albums },
         imageUrl: `${APP_URL}/albums_icon.svg`,
         sublabel: `${albums?.length} ${pluralize(
           "album",
@@ -95,7 +95,7 @@ const _SearchView = () => {
         type: "view",
         label: "Playlists",
         viewId: "playlists",
-        props: { playlists, inLibrary: false },
+        props: { playlists },
         imageUrl: `${APP_URL}/playlist_icon.svg`,
         sublabel: `${playlists?.length} ${pluralize(
           "playlist",
@@ -129,16 +129,16 @@ const _SearchView = () => {
       emptyMessage="No results"
       emptyContent={
         !isAuthorized
-          ? <AuthPrompt />
+          ? <FolderPrompt />
           : undefined
       }
     />
   );
 };
 
-export const SearchView = Object.assign(_SearchView, {
+export const SearchView = Object.assign(SearchViewComponent, {
   viewConfig: defineView({
-    component: _SearchView,
+    component: SearchViewComponent,
     type: "full",
     title: "Search",
     preview: SplitScreenPreview.Music,

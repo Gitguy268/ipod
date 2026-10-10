@@ -3,7 +3,7 @@ export * from "./icons";
 export * from "./previews";
 export * from "./ClickWheel";
 
-export { default as AuthPrompt } from "./AuthPrompt";
+export { default as FolderPrompt } from "./FolderPrompt";
 export { default as BatteryIndicator } from "./BatteryIndicator";
 export { default as Controls } from "./Controls";
 export { default as ErrorScreen } from "./ErrorScreen";

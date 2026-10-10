@@ -3,7 +3,7 @@ import { SelectableListOption } from "@/components/SelectableList";
 import SelectableListView from "@/components/SelectableListView";
 import { SplitScreenPreview } from "@/components/previews";
 
-const _GamesView = () => {
+const GamesViewComponent = () => {
   const options: SelectableListOption[] = [
     {
       type: "view",
@@ -22,9 +22,9 @@ const _GamesView = () => {
   return <SelectableListView viewId="games" options={options} />;
 };
 
-export const GamesView = Object.assign(_GamesView, {
+export const GamesView = Object.assign(GamesViewComponent, {
   viewConfig: defineView({
-    component: _GamesView,
+    component: GamesViewComponent,
     type: "split",
     title: "Games",
     isSplitScreen: true,

@@ -8,7 +8,7 @@ import { SplitScreenPreview } from "@/components/previews";
 import {
   useAudioPlayer,
   useEventListener,
-  useSignInOptions,
+  useFolderOptions,
   useViewContext,
 } from "@/hooks";
 import { IpodEvent } from "@/utils/events";
@@ -17,10 +17,10 @@ const strings = {
   nowPlaying: "Now Playing",
 };
 
-const _HomeView = () => {
+const HomeViewComponent = () => {
   const { nowPlayingItem } = useAudioPlayer();
   const { showView, viewStack } = useViewContext();
-  const signInOptions = useSignInOptions();
+  const chooseFolderOptions = useFolderOptions();
 
   const options: SelectableListOption[] = useMemo(
     () => [
@@ -48,7 +48,7 @@ const _HomeView = () => {
         viewId: "settings",
         preview: SplitScreenPreview.Settings,
       },
-      ...(signInOptions ?? []).map(
+      ...(chooseFolderOptions ?? []).map(
         (option): SelectableListOption => ({
           ...option,
           preview: SplitScreenPreview.Music,
@@ -61,7 +61,7 @@ const _HomeView = () => {
         preview: SplitScreenPreview.NowPlaying,
       }),
     ],
-    [signInOptions, nowPlayingItem]
+    [chooseFolderOptions, nowPlayingItem]
   );
 
   const handleIdleState = useCallback(() => {
@@ -84,9 +84,9 @@ const _HomeView = () => {
   return <SelectableListView viewId="home" options={options} />;
 };
 
-export const HomeView = Object.assign(_HomeView, {
+export const HomeView = Object.assign(HomeViewComponent, {
   viewConfig: defineView({
-    component: _HomeView,
+    component: HomeViewComponent,
     type: "split",
     title: "iPod.js",
     isSplitScreen: true,

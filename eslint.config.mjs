@@ -4,7 +4,7 @@ import unusedImports from "eslint-plugin-unused-imports";
 
 const eslintConfig = defineConfig([
   ...nextCoreWebVitals,
-  globalIgnores(["**/build/**", "next.config.mjs"]),
+  globalIgnores(["**/build/**", "out/**", "next.config.mjs"]),
   {
     plugins: {
       "unused-imports": unusedImports,
@@ -32,6 +32,13 @@ const eslintConfig = defineConfig([
           allowTemplateLiterals: true,
         },
       ],
+    },
+  },
+  {
+    // Command-line scripts report their results on the console.
+    files: ["scripts/**"],
+    rules: {
+      "no-console": "off",
     },
   },
 ]);

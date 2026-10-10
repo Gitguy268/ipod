@@ -43,8 +43,6 @@ export const SettingsContext = createContext<SettingsContextType>([
 export type SettingsHook = SettingsState & {
   /** True once a music folder has been loaded. */
   isAuthorized: boolean;
-  /** Local files never need a connection. Kept so views can share one gate. */
-  isOffline: boolean;
   setColorScheme: (colorScheme?: ColorScheme) => void;
   setDeviceTheme: (deviceTheme: DeviceThemeName) => void;
   setShuffleMode: (mode: ShuffleMode) => void;
@@ -119,7 +117,6 @@ export const useSettings = (): SettingsHook => {
   return {
     ...state,
     isAuthorized: status === "ready",
-    isOffline: false,
     setColorScheme,
     setDeviceTheme,
     setShuffleMode,

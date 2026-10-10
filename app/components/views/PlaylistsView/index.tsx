@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 
-import AuthPrompt from "@/components/AuthPrompt";
+import FolderPrompt from "@/components/FolderPrompt";
 import { SelectableListOption } from "@/components/SelectableList";
 import SelectableListView from "@/components/SelectableListView";
 import { SplitScreenPreview } from "@/components/previews";
@@ -11,11 +11,10 @@ import { useFetchPlaylists } from "@/hooks/utils/useDataFetcher";
 
 interface Props {
   playlists?: MediaApi.Playlist[];
-  inLibrary?: boolean;
 }
 
-const _PlaylistsView = ({ playlists, inLibrary = true }: Props) => {
-  const { isAuthorized, isOffline } = useSettings();
+const PlaylistsViewComponent = ({ playlists }: Props) => {
+  const { isAuthorized } = useSettings();
   const {
     data: fetchedPlaylists,
     fetchNextPage,
@@ -37,11 +36,11 @@ const _PlaylistsView = ({ playlists, inLibrary = true }: Props) => {
         imageUrl: Utils.getArtwork(100, playlist.artwork?.url),
         viewId: "playlist",
         headerTitle: playlist.name,
-        props: { id: playlist.id, inLibrary },
+        props: { id: playlist.id },
         longPressOptions: Utils.getMediaOptions("playlist", playlist.id),
       })) ?? []
     );
-  }, [fetchedPlaylists?.pages, inLibrary, playlists]);
+  }, [fetchedPlaylists?.pages, playlists]);
 
   const isLoading = !options.length && isQueryLoading;
 
@@ -54,23 +53,23 @@ const _PlaylistsView = ({ playlists, inLibrary = true }: Props) => {
   return (
     <SelectableListView
       viewId="playlists"
-      options={!isAuthorized || isOffline ? [] : options}
-      loading={isAuthorized && !isOffline && isLoading}
+      options={!isAuthorized ? [] : options}
+      loading={isAuthorized && isLoading}
       loadingNextItems={isFetchingNextPage}
       onNearEndOfList={handleNearEndOfList}
       emptyMessage="No saved playlists"
       emptyContent={
-        !isAuthorized || isOffline
-          ? <AuthPrompt />
+        !isAuthorized
+          ? <FolderPrompt />
           : undefined
       }
     />
   );
 };
 
-export const PlaylistsView = Object.assign(_PlaylistsView, {
+export const PlaylistsView = Object.assign(PlaylistsViewComponent, {
   viewConfig: defineView({
-    component: _PlaylistsView,
+    component: PlaylistsViewComponent,
     type: "full",
     title: "Playlists",
     preview: SplitScreenPreview.Music,

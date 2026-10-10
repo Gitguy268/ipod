@@ -9,14 +9,11 @@ import { useFetchArtistAlbums } from "@/hooks/utils/useDataFetcher";
 
 interface Props {
   id: string;
-  /** Unused: everything comes from the local music folder. */
-  inLibrary?: boolean;
 }
 
-const _ArtistView = ({ id, inLibrary = false }: Props) => {
+const ArtistViewComponent = ({ id }: Props) => {
   const { data: albums, isLoading } = useFetchArtistAlbums({
     id,
-    inLibrary,
   });
 
   const options: SelectableListOption[] = useMemo(
@@ -29,11 +26,11 @@ const _ArtistView = ({ id, inLibrary = false }: Props) => {
           sublabel: album.artistName,
           imageUrl: Utils.getArtwork(100, album.artwork?.url),
           viewId: "album",
-          props: { id: album.id ?? "", inLibrary },
+          props: { id: album.id ?? "" },
           longPressOptions: Utils.getMediaOptions("album", album.id),
         })
       ) ?? [],
-    [albums, inLibrary]
+    [albums]
   );
 
   return (
@@ -46,9 +43,9 @@ const _ArtistView = ({ id, inLibrary = false }: Props) => {
   );
 };
 
-export const ArtistView = Object.assign(_ArtistView, {
+export const ArtistView = Object.assign(ArtistViewComponent, {
   viewConfig: defineView({
-    component: _ArtistView,
+    component: ArtistViewComponent,
     type: "full",
     title: "Artist",
     preview: SplitScreenPreview.Music,

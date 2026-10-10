@@ -41,7 +41,7 @@ const ListContainer = styled.div`
   flex: 1;
 `;
 
-const _AboutView = () => {
+const AboutViewComponent = () => {
   const options: SelectableListOption[] = [
     {
       type: "link",
@@ -82,9 +82,9 @@ const _AboutView = () => {
   );
 };
 
-export const AboutView = Object.assign(_AboutView, {
+export const AboutView = Object.assign(AboutViewComponent, {
   viewConfig: defineView({
-    component: _AboutView,
+    component: AboutViewComponent,
     type: "full",
     title: "About",
     preview: SplitScreenPreview.Settings,

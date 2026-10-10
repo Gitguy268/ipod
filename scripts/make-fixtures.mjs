@@ -2,16 +2,26 @@
 // Generates a small tagged music library in public/dev-fixtures (not committed).
 // Open the app with `?fixture` to load it without the system folder picker.
 // Requires ffmpeg.
+//
+//   node scripts/make-fixtures.mjs                          the hand-made edge cases only
+//   node scripts/make-fixtures.mjs --albums 200 --tracks 10 plus 2,000 generated songs
 
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseArgs, promisify } from "node:util";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = path.join(ROOT, "public", "dev-fixtures");
 const FILES = path.join(OUT, "files");
 const SECONDS = 8;
+
+const { values: args } = parseArgs({
+  options: { albums: { type: "string" }, tracks: { type: "string" } },
+});
+const BULK_ALBUMS = Number(args.albums ?? 0);
+const BULK_TRACKS = Number(args.tracks ?? 10);
 
 const ffmpeg = (...args) =>
   execFileSync("ffmpeg", ["-y", "-loglevel", "error", ...args]);
@@ -100,8 +110,86 @@ makeCover(path.join(covers, "summer.jpg"), ["0xffd23f", "0xee4266"]);
 makeTrack("Garage Tapes/Basement Sessions/07 - Untitled Demo.wav", 150);
 makeTrack("Garage Tapes/Basement Sessions/08 - Second Take.ogg", 170);
 
+// 7. Formats browsers refuse: Apple Lossless hides inside an ordinary .m4a.
+ffmpeg(
+  "-f", "lavfi", "-i", `sine=frequency=330:duration=${SECONDS}`,
+  "-c:a", "alac",
+  "-metadata", "title=Lossless Take", "-metadata", "artist=Mesa Verde",
+  "-metadata", "album=Dust and Echo", "-metadata", "track=4",
+  path.join(FILES, "Mesa Verde/Dust and Echo/04 Lossless Take.m4a")
+);
+ffmpeg(
+  "-f", "lavfi", "-i", `sine=frequency=350:duration=${SECONDS}`,
+  "-c:a", "wmav2",
+  path.join(FILES, "Garage Tapes/Basement Sessions/09 - Old Rip.wma")
+);
+
+// 8. Playlists, written the different ways players write them.
+fs.mkdirSync(path.join(FILES, "Playlists"), { recursive: true });
+fs.writeFileSync(
+  path.join(FILES, "Playlists/Road Trip.m3u"),
+  [
+    "#EXTM3U",
+    "#EXTINF:8,Aurora Lane - Departure",
+    "../Aurora Lane/Long Way Round/CD1/01 Departure.mp3",
+    "..\\Mesa Verde\\Dust and Echo\\01 Arroyo.m4a",
+    "C:\\Users\\someone\\Music\\Compilations\\Summer Mix\\02 Heatwave.mp3",
+    "/Volumes/Music/Low%20Tide%20Club/Harbour%20Songs/03%20Ebb.flac",
+    "../Missing/Not Here.mp3",
+    "",
+  ].join("\n")
+);
+fs.writeFileSync(
+  path.join(FILES, "Aurora Lane/Best Of.m3u8"),
+  ["Northern Lights/01 First Light.mp3", "Long Way Round/CD2/02 Home.mp3", ""].join("\r\n")
+);
+
 // A file the app should ignore.
 fs.writeFileSync(path.join(FILES, "Aurora Lane/notes.txt"), "not music\n");
+
+// 9. Optional bulk library for checking speed: copies of one tone with different tags.
+if (BULK_ALBUMS > 0) {
+  const run = promisify(execFile);
+  const base = path.join(OUT, "base.mp3");
+  ffmpeg("-f", "lavfi", "-i", `sine=frequency=440:duration=${SECONDS}`, base);
+
+  const GENRES = ["Rock", "Jazz", "Electronic", "Folk", "Classical", "Hip-Hop"];
+  const jobs = [];
+
+  for (let a = 0; a < BULK_ALBUMS; a++) {
+    const artist = `Bulk Artist ${String(a % Math.ceil(BULK_ALBUMS / 4)).padStart(3, "0")}`;
+    const album = `Bulk Album ${String(a).padStart(4, "0")}`;
+    const cover = path.join(covers, `bulk-${a}.jpg`);
+    const hue = (n) => `0x${((a * n * 2654435761) >>> 8).toString(16).padStart(6, "0").slice(-6)}`;
+    makeCover(cover, [hue(1), hue(7)]);
+
+    for (let n = 1; n <= BULK_TRACKS; n++) {
+      const file = path.join(FILES, "Bulk", artist, album, `${String(n).padStart(2, "0")} Track ${n}.mp3`);
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      jobs.push(() =>
+        run("ffmpeg", [
+          "-y", "-loglevel", "error", "-i", base, "-i", cover,
+          "-map", "0:a", "-map", "1:v", "-c", "copy", "-disposition:v", "attached_pic",
+          "-metadata", `title=Track ${n} of ${album}`, "-metadata", `artist=${artist}`,
+          "-metadata", `album=${album}`, "-metadata", `track=${n}/${BULK_TRACKS}`,
+          "-metadata", `genre=${GENRES[a % GENRES.length]}`, "-metadata", `date=${1970 + (a % 50)}`,
+          file,
+        ])
+      );
+    }
+  }
+
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: 8 }, async () => {
+      while (next < jobs.length) {
+        await jobs[next++]();
+      }
+    })
+  );
+
+  fs.rmSync(base);
+}
 
 fs.rmSync(covers, { recursive: true });
 
