@@ -21,6 +21,10 @@ Point it at a music folder and browse it with the click wheel. Nothing is upload
 
 A reworking of [tvillarete/ipod-classic-js](https://github.com/tvillarete/ipod-classic-js) with the Apple Music and Spotify integrations replaced by a library read from a local folder.
 
+<!-- live-links -->
+**Live:** [gitguy268.github.io/ipod](https://gitguy268.github.io/ipod/) · [ipod-beige.vercel.app](https://ipod-beige.vercel.app)
+<!-- /live-links -->
+
 <!-- run-steps:start -->
 ## Run it locally, step by step
 
