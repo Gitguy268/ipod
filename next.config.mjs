@@ -8,7 +8,7 @@ const analyzer = withBundleAnalyzer({
 const nextConfig = {
   reactStrictMode: false,
   output: "export",
-  basePath: "/ipod",
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH ?? "",
   turbopack: {},
   allowedDevOrigins: ["127.0.0.1", "localhost"],
   compiler: {

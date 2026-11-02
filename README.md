@@ -1,18 +1,23 @@
 <div align="center">
 
+<img src="docs/logo.png" alt="" width="96">
+
 # iPod.js (local files)
 
 **The iPod Classic, playing the music on your own computer.**
 
-Point it at a music folder and browse it with the click wheel. Nothing is uploaded: files are read straight from disk in the browser.
+[Your music](#your-music) · [Display modes](#display-modes) · [Running it yourself](#running-it-yourself)
 
-[Open the player](https://gitguy268.github.io/ipod/)
+![CI](https://img.shields.io/github/actions/workflow/status/Gitguy268/ipod/ci.yml?branch=main&label=CI)
+![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue)
+![Nothing is uploaded](https://img.shields.io/badge/uploads-none-brightgreen)
+![Built with Next.js](https://img.shields.io/badge/built%20with-Next.js-black)
 
-<img src="docs/full.png" alt="The iPod showing a list of albums with their artwork" width="300">
+<img src="docs/demo.gif" alt="The click wheel scrolls from the main menu into Cover Flow, opens an album and starts a song" width="340">
 
 </div>
 
----
+Point it at a music folder and browse it with the click wheel. Nothing is uploaded: files are read straight from disk in the browser.
 
 A reworking of [tvillarete/ipod-classic-js](https://github.com/tvillarete/ipod-classic-js) with the Apple Music and Spotify integrations replaced by a library read from a local folder.
 
@@ -42,11 +47,11 @@ The page has to be served from `https://` or `localhost`. It does not work opene
 
 Switch with the control in the top-right corner, or under Settings.
 
-| | |
-|---|---|
-| **Compact**: artwork, title and previous / play / next. **Pop out** puts it in a small window that stays above other apps (in Chrome, Edge and Brave; elsewhere it is an ordinary pop-up). | <img src="docs/compact.png" alt="The compact mini player" width="420"> |
-| **Full**: the iPod. | |
-| **Massive**: fills the window with the album cover, an album's track list, or a searchable wall of covers. | <img src="docs/massive.png" alt="Massive mode showing a song with its cover and the next songs" width="420"> |
+| Mode | What you get | |
+|---|---|---|
+| **Compact** | Artwork, title and previous / play / next. **Pop out** puts it in a small window that stays above other apps (in Chrome, Edge and Brave; elsewhere it is an ordinary pop-up). | <img src="docs/compact.png" alt="The compact mini player" width="380"> |
+| **Full** | The iPod. | <img src="docs/full.png" alt="The iPod showing a list of albums with their artwork" width="170"> |
+| **Massive** | Fills the window with the album cover, an album's track list, or a searchable wall of covers. | <img src="docs/massive.png" alt="Massive mode showing a song with its cover and the next songs" width="380"> |
 
 ## Playback
 
@@ -84,6 +89,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how to set up, test and send changes,
 
 - The iPod interface, games and themes are from [iPod.js](https://github.com/tvillarete/ipod-classic-js) by Tanner Villarete (MIT).
 - Tags and artwork are read with [music-metadata](https://github.com/Borewit/music-metadata) (MIT).
+- The MilkDrop visualizer is [butterchurn](https://github.com/jberg/butterchurn) with [butterchurn-presets](https://github.com/jberg/butterchurn-presets), both by Jordan Berg (MIT). The presets are community MilkDrop presets, each named after its authors.
+- The Bars visualizer follows [Musializer](https://github.com/tsoding/musializer) (MIT, copyright 2023 Alexey Kutepov and Musializer Contributors): its spectrum analysis and drawing, rewritten for the browser.
 - Built with Next.js, React, TypeScript, styled-components, Motion, TanStack Query and Serwist.
 - The images in `public/` come from the original project, except `card_back.svg`. The React logo shown in Settings is a trademark of Meta.
 

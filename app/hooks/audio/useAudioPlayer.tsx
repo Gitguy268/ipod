@@ -13,7 +13,7 @@ import { queueBridge, useLibrary } from "@/lib/library";
 import * as Utils from "@/utils";
 
 import { useSettings, VOLUME_KEY, ShuffleMode, RepeatMode } from "..";
-import { AudioDecks } from "./audioDecks";
+import { AudioDecks, type AudioTap } from "./audioDecks";
 import {
   clearSavedPlayback,
   loadSavedPlayback,
@@ -58,6 +58,8 @@ interface AudioPlayerState {
   updateNowPlayingItem: () => Promise<void>;
   updatePlaybackInfo: () => Promise<void>;
   reset: () => void;
+  /** The audio as Web Audio nodes, for the visualizer. See `AudioDecks.getTap`. */
+  getVisualizerTap: () => Promise<AudioTap>;
 }
 
 // Context initialized with empty object - actual value provided by AudioPlayerProvider
@@ -164,6 +166,8 @@ export const AudioPlayerProvider = ({ children }: Props) => {
   }, []);
 
   const getAudio = useCallback(() => getDecks().current, [getDecks]);
+
+  const getVisualizerTap = useCallback(() => getDecks().getTap(), [getDecks]);
 
   /** Where the queue goes after the current song, if anywhere. */
   const getNextIndex = useCallback(() => {
@@ -718,6 +722,7 @@ export const AudioPlayerProvider = ({ children }: Props) => {
         skipNext,
         skipPrevious,
         reset,
+        getVisualizerTap,
       }}
     >
       <QueueContext.Provider value={queueValue}>{children}</QueueContext.Provider>

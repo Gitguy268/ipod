@@ -45,3 +45,8 @@ public/dev-fixtures
 
 # static export
 /out
+.vercel/
+.env
+.env.*
+!.env.example
+node_modules/

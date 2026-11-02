@@ -44,6 +44,12 @@ const HomeViewComponent = () => {
       },
       {
         type: "view",
+        label: "Visualizer",
+        viewId: "visualizers",
+        preview: SplitScreenPreview.Music,
+      },
+      {
+        type: "view",
         label: "Settings",
         viewId: "settings",
         preview: SplitScreenPreview.Settings,
@@ -71,6 +77,7 @@ const HomeViewComponent = () => {
       !!nowPlayingItem &&
       activeView.id !== "nowPlaying" &&
       activeView.id !== "coverFlow" &&
+      activeView.id !== "visualizer" &&
       activeView.id !== "keyboard";
 
     // Only show the now playing view if we're playing a song and not already on that view.

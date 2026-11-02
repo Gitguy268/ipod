@@ -45,7 +45,7 @@ All four run on every pull request.
 | `app/hooks/audio/` | Playback: the queue, the two audio elements, resume, media keys |
 | `app/components/views/` | The iPod's screens |
 | `app/components/MiniPlayer`, `MassivePlayer` | The compact and massive display modes |
-| `scripts/` | The index checks and the test-library generator |
+| `scripts/` | The index and visualizer checks and the test-library generator |
 
 ## Conduct
 

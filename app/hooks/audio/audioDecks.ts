@@ -7,6 +7,12 @@ type AudioEventName =
   | "ended"
   | "error";
 
+/** What the decks are playing, as Web Audio nodes that something else can listen to. */
+export interface AudioTap {
+  context: AudioContext;
+  node: AudioNode;
+}
+
 interface Deck {
   audio: HTMLAudioElement;
   url?: string;
@@ -50,6 +56,8 @@ const load = (deck: Deck, file: File) => {
 export class AudioDecks {
   private active = createDeck();
   private standby = createDeck();
+  private tapContext?: AudioContext;
+  private tap?: Promise<AudioTap>;
 
   /** The element that is playing (or about to). */
   get current() {
@@ -76,6 +84,41 @@ export class AudioDecks {
     [this.active, this.standby] = [this.standby, this.active];
     this.active.preloadedSongId = undefined;
     unload(this.standby);
+  }
+
+  /**
+   * Routes both decks through Web Audio so that the visualizer can listen to them.
+   *
+   * A browser may hold the audio context back until a click, so call this again from one.
+   * The decks are only rerouted once the context runs: rerouting cannot be undone, and
+   * through a context that is held back they would be silent.
+   */
+  getTap() {
+    const context = (this.tapContext ??= new AudioContext());
+    context.resume().catch(() => {});
+
+    this.tap ??= new Promise<AudioTap>((resolve) => {
+      const route = () => {
+        if (context.state !== "running") return;
+        context.removeEventListener("statechange", route);
+
+        const node = context.createGain();
+        for (const { audio } of [this.active, this.standby]) {
+          context.createMediaElementSource(audio).connect(node);
+          // A phone call or a sleeping tab can pause the context; pressing play wakes it.
+          audio.addEventListener("play", () =>
+            context.resume().catch(() => {})
+          );
+        }
+        node.connect(context.destination);
+        resolve({ context, node });
+      };
+
+      context.addEventListener("statechange", route);
+      route();
+    });
+
+    return this.tap;
   }
 
   clearPreload() {

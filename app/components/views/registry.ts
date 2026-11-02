@@ -16,6 +16,8 @@ import { SearchView } from "./SearchView";
 import { SettingsView } from "./SettingsView";
 import { SolitaireGameView } from "./SolitaireGameView";
 import { SongsView } from "./SongsView";
+import { VisualizerView } from "./VisualizerView";
+import { VisualizersView } from "./VisualizersView";
 
 export const VIEW_REGISTRY = {
   home: HomeView.viewConfig,
@@ -36,6 +38,8 @@ export const VIEW_REGISTRY = {
   brickGame: BrickGameView.viewConfig,
   solitaireGame: SolitaireGameView.viewConfig,
   coverFlow: CoverFlowView.viewConfig,
+  visualizers: VisualizersView.viewConfig,
+  visualizer: VisualizerView.viewConfig,
 } as const;
 
 export type ViewId = keyof typeof VIEW_REGISTRY;

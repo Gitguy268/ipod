@@ -2,6 +2,7 @@
   "name": "ipod-classic",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "packageManager": "pnpm@10.30.3",
   "scripts": {
     "dev": "next dev",
@@ -9,10 +10,12 @@
     "bundle-report": "ANALYZE=true pnpm build",
     "lint": "eslint .",
     "type-check": "tsc && tsc -p tsconfig.worker.json",
-    "test": "node scripts/check-index.mjs"
+    "test": "node scripts/check-index.mjs && node scripts/check-bars.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.100.4",
+    "butterchurn": "2.6.7",
+    "butterchurn-presets": "2.4.7",
     "ios-haptics": "^0.1.4",
     "motion": "^12.38.0",
     "music-metadata": "^12.1.0",
