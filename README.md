@@ -29,23 +29,23 @@ A reworking of [tvillarete/ipod-classic-js](https://github.com/tvillarete/ipod-c
 2. **Get the code:**
 
    ```sh
-   git clone https://github.com/Gitguy268/ipod-classic-js.git
-   cd ipod-classic-js
+   git clone https://github.com/Gitguy268/ipod.git
+   cd ipod
    ```
 
-3. **Install the dependencies:**
+3. **Install [pnpm](https://pnpm.io/installation),** then the dependencies:
 
    ```sh
-   npm ci
+   pnpm install
    ```
 
 4. **Start it:**
 
    ```sh
-   npm run dev
+   pnpm dev
    ```
 
-5. **Open <http://localhost:3000/>** in your browser. Press `Ctrl+C` in the terminal to stop.
+5. **Open <http://localhost:3000/ipod>** in your browser. Press `Ctrl+C` in the terminal to stop.
 <!-- run-steps:end -->
 
 ## Your music
