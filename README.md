@@ -21,6 +21,33 @@ Point it at a music folder and browse it with the click wheel. Nothing is upload
 
 A reworking of [tvillarete/ipod-classic-js](https://github.com/tvillarete/ipod-classic-js) with the Apple Music and Spotify integrations replaced by a library read from a local folder.
 
+<!-- run-steps:start -->
+## Run it locally, step by step
+
+1. **Install [Node.js](https://nodejs.org) 22** or newer.
+
+2. **Get the code:**
+
+   ```sh
+   git clone https://github.com/Gitguy268/ipod-classic-js.git
+   cd ipod-classic-js
+   ```
+
+3. **Install the dependencies:**
+
+   ```sh
+   npm ci
+   ```
+
+4. **Start it:**
+
+   ```sh
+   npm run dev
+   ```
+
+5. **Open <http://localhost:3000/>** in your browser. Press `Ctrl+C` in the terminal to stop.
+<!-- run-steps:end -->
+
 ## Your music
 
 - Every audio file in the chosen folder and its subfolders is added: mp3, m4a, aac, flac, wav, ogg, opus, aiff.
